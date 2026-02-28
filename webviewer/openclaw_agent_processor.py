@@ -151,11 +151,11 @@ def _execute_openclaw_command(full_prompt: str) -> dict:
     cmd = [
         '/root/.nvm/versions/node/v22.22.0/bin/openclaw',
         'agent',
-        '--agent', 'main',
+        '--agent', 'dummy',
         '-m', full_prompt
     ]
     
-    print(f"🔧 执行：openclaw agent --agent main -m \"...\"")
+    print(f"🔧 执行：openclaw agent --agent dummy -m \"...\"")
     
     result = subprocess.run(
         cmd,
