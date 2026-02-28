@@ -1,0 +1,14 @@
+{
+  "msg_id": "02612a93-8017-4530-8c57-beecb1daae5b",
+  "original_message": "你好",
+  "processed_by": "openclaw_bridge",
+  "timestamp": 1772170309,
+  "success": false,
+  "project": "unknown",
+  "action": "unknown",
+  "message": "抱歉，我还不太理解这条消息：你好\n\n你可以试试：\n✈️ 我要出差 3 天\n🏠 帮我记录搬家物品\n💊 找一下感冒药",
+  "refresh": null,
+  "data": {
+    "message": "你好"
+  }
+}

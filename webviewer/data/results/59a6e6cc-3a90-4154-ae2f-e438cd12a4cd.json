@@ -1,0 +1,14 @@
+{
+  "msg_id": "59a6e6cc-3a90-4154-ae2f-e438cd12a4cd",
+  "original_message": "物品",
+  "processed_by": "openclaw_bridge",
+  "timestamp": 1772170327,
+  "success": false,
+  "project": "unknown",
+  "action": "unknown",
+  "message": "抱歉，我还不太理解这条消息：物品\n\n你可以试试：\n✈️ 我要出差 3 天\n🏠 帮我记录搬家物品\n💊 找一下感冒药",
+  "refresh": null,
+  "data": {
+    "message": "物品"
+  }
+}

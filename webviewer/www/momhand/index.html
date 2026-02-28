@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>妈妈的手 - Momhand</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/transitions.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] }
+        }
+      }
+    }
+  </script>
+  <style>
+    * { font-family: 'Inter', system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
+    .gradient-bg { background: linear-gradient(135deg, #065f46 0%, #059669 50%, #10b981 100%); }
+    .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.2); }
+    .floating { animation: floating 3s ease-in-out infinite; }
+    @keyframes floating { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-10px); } }
+    .slide-in { animation: slideIn 0.4s ease-out; }
+    @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .expand-in { animation: expandIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
+    @keyframes expandIn { 0% { transform: scale(0.9) translateY(20px); opacity: 0; } 100% { transform: scale(1) translateY(0); opacity: 1; } }
+    .item-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .item-card:hover { transform: translateY(-5px); box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.2); }
+    .fab-button { position: fixed; bottom: 24px; right: 24px; z-index: 100; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .fab-button:hover { transform: scale(1.1); }
+    .fab-panel { position: fixed; bottom: 100px; right: 24px; z-index: 99; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    @media (max-width: 640px) {
+      .fab-button { bottom: 16px; right: 16px; }
+      .fab-panel { bottom: 90px; right: 16px; left: 16px; }
+      h1 { font-size: 28px !important; }
+    }
+  </style>
+</head>
+<body class="gradient-bg min-h-screen pb-40 sm:pb-32">
+  <div class="fixed inset-0 overflow-hidden pointer-events-none">
+    <div class="absolute top-1/4 left-1/4 w-72 h-72 bg-green-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 floating"></div>
+    <div class="absolute bottom-1/4 right-1/4 w-72 h-72 bg-emerald-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 floating" style="animation-delay: -1.5s;"></div>
+  </div>
+
+  <div class="relative max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+    <header class="text-center mb-8">
+      <div class="inline-block mb-4"><div class="text-5xl sm:text-6xl floating">👋</div></div>
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-white mb-2">妈妈的手</h1>
+      <p class="text-green-100 text-base sm:text-lg font-light mb-3">Momhand</p>
+      <div class="w-16 h-1 bg-gradient-to-r from-green-400 to-emerald-400 mx-auto rounded-full"></div>
+      <p class="text-green-200/70 text-xs sm:text-sm mt-3">💬 "你这孩子，这不就在电视柜上嘛！"</p>
+      <a href="/" class="inline-flex items-center gap-2 text-green-200 hover:text-white transition-colors mt-4 text-sm"><span>←</span> 返回首页</a>
+    </header>
+
+    <div id="stats" class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-8"></div>
+
+    <div class="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-6 mb-8">
+      <div class="flex flex-col sm:flex-row gap-4">
+        <div class="flex-1 flex items-center gap-3">
+          <span class="text-2xl">🔍</span>
+          <input type="text" id="searchInput" placeholder="找什么东西？试试搜索名称、位置、用途..." class="flex-1 px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-green-500 focus:ring-2 focus:ring-green-100 outline-none transition-all text-gray-700 text-sm sm:text-base">
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-2xl">📂</span>
+          <select id="categoryFilter" class="px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-green-500 focus:ring-2 focus:ring-green-100 outline-none transition-all text-gray-700 font-medium bg-white text-sm sm:text-base">
+            <option value="">全部分类</option>
+          </select>
+        </div>
+      </div>
+      <div class="mt-4 flex flex-wrap gap-2">
+        <button onclick="quickSearch('药品')" class="px-3 py-1.5 bg-green-100 text-green-700 rounded-full text-xs sm:text-sm font-medium hover:bg-green-200 transition-all">💊 药品</button>
+        <button onclick="quickSearch('工具')" class="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-full text-xs sm:text-sm font-medium hover:bg-blue-200 transition-all">🔧 工具</button>
+        <button onclick="quickSearch('证件')" class="px-3 py-1.5 bg-purple-100 text-purple-700 rounded-full text-xs sm:text-sm font-medium hover:bg-purple-200 transition-all">📄 证件</button>
+        <button onclick="quickSearch('厨房')" class="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-full text-xs sm:text-sm font-medium hover:bg-orange-200 transition-all">🍳 厨房</button>
+      </div>
+    </div>
+
+    <div id="itemsGrid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-20"></div>
+  </div>
+
+  <!-- 悬浮按钮 -->
+  <button onclick="togglePanel()" class="fab-button bg-gradient-to-r from-green-500 to-emerald-500 text-white w-14 h-14 rounded-full shadow-2xl flex items-center justify-center text-2xl hover:shadow-green-500/50">
+    <span id="fabIcon">💬</span>
+  </button>
+
+  <!-- 展开面板 -->
+  <div id="fabPanel" class="fab-panel hidden">
+    <div class="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl expand-in max-w-md w-full">
+      <div class="flex items-center gap-3 mb-4 pb-3 border-b border-gray-100">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center text-xl">💬</div>
+        <div>
+          <h3 class="text-base font-bold text-gray-800">快速添加</h3>
+          <p class="text-xs text-gray-500">通过对话添加物品</p>
+        </div>
+      </div>
+      
+      <div class="mb-4">
+        <textarea id="messageInput" placeholder="描述要添加的物品，例如：&#10;• 帮我记一下，感冒药放在了药箱里&#10;• 记录物品：笔记本电脑，位置：书房书桌" rows="3" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-green-500 focus:ring-2 focus:ring-green-100 outline-none transition-all text-gray-700 text-sm resize-none"></textarea>
+      </div>
+      
+      <button onclick="sendMessage()" class="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2">
+        <span>📤</span>
+        <span>发送</span>
+      </button>
+      
+      <div class="mt-4 pt-4 border-t border-gray-100">
+        <p class="text-xs text-gray-400 mb-2">试试这样说：</p>
+        <div class="flex flex-wrap gap-2">
+          <button onclick="fillExample('帮我记一下，感冒药放在了药箱里')" class="text-xs px-3 py-1.5 bg-green-50 text-green-600 rounded-full hover:bg-green-100 transition-all">💊 记录药品</button>
+          <button onclick="fillExample('帮我记一下，笔记本电脑放在了书房书桌')" class="text-xs px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-full hover:bg-emerald-100 transition-all">💻 记录物品</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 结果展示 -->
+  <div id="resultArea" class="fixed top-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-96 z-[150] hidden">
+    <div id="resultContent" class="expand-in"></div>
+  </div>
+
+  <link rel="stylesheet" href="/transitions.css">
+  <script>
+    let allItems = [];
+    let categories = new Set();
+    let panelOpen = false;
+
+    function togglePanel() {
+      panelOpen = !panelOpen;
+      const panel = document.getElementById('fabPanel');
+      const icon = document.getElementById('fabIcon');
+      if (panelOpen) {
+        panel.classList.remove('hidden');
+        icon.textContent = '✕';
+      } else {
+        panel.classList.add('hidden');
+        icon.textContent = '💬';
+      }
+    }
+
+    function fillExample(text) {
+      document.getElementById('messageInput').value = text;
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById('messageInput');
+      const message = input.value.trim();
+      if (!message) { showResult('⚠️ 请输入内容', 'warning'); return; }
+
+      showResult('⏳ 已提交，正在后台处理...', 'info');
+      input.value = '';
+      togglePanel();
+
+      try {
+        const response = await fetch('/api/send-message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: message, timestamp: Date.now() })
+        });
+        const result = await response.json();
+
+        if (result.success) {
+          const msgId = result.msg_id;
+          
+          // 如果是异步处理（processing: true），开始轮询结果
+          if (result.processing) {
+            showResult('⏳ 后台处理中，请稍候...', 'info');
+            pollResult(msgId);
+          } else {
+            // 同步处理完成
+            showResult(`✅ ${result.message}`, 'success');
+            if (result.refresh) {
+              setTimeout(() => { window.location.href = result.refresh + '?t=' + Date.now(); }, 3000);
+            } else {
+              loadItems();
+              loadStats();
+            }
+          }
+        } else {
+          showResult(`❌ ${result.error || '处理失败'}`, 'error');
+        }
+      } catch (error) {
+        showResult(`❌ 发送失败：${error.message}`, 'error');
+      }
+    }
+
+    // 轮询处理结果
+    function pollResult(msgId) {
+      let attempts = 0;
+      const maxAttempts = 60; // 最多轮询 60 次（30 秒）
+      
+      const pollTimer = setInterval(async () => {
+        attempts++;
+        try {
+          const response = await fetch(`/api/message-result?msg_id=${msgId}`);
+          const result = await response.json();
+          
+          if (result.processed || !result.success) {
+            clearInterval(pollTimer);
+            
+            if (result.data && result.data.success !== false) {
+              showResult(`✅ ${result.data.message || '处理完成'}`, 'success');
+              
+              if (result.data.refresh) {
+                setTimeout(() => { window.location.href = result.data.refresh + '?t=' + Date.now(); }, 2000);
+              } else {
+                loadItems();
+                loadStats();
+              }
+            } else {
+              showResult(`❌ ${result.data?.error || result.data?.message || '处理失败'}`, 'error');
+            }
+          } else if (attempts >= maxAttempts) {
+            clearInterval(pollTimer);
+            showResult('⏰ 处理超时，请刷新页面查看结果', 'warning');
+          }
+        } catch (error) {
+          console.error('轮询失败:', error);
+        }
+      }, 500); // 每 500ms 轮询一次
+    }
+
+    function showResult(text, type) {
+      const area = document.getElementById('resultArea');
+      const content = document.getElementById('resultContent');
+      const colors = {
+        'success': 'bg-green-50 border-green-200 text-green-700',
+        'error': 'bg-red-50 border-red-200 text-red-700',
+        'warning': 'bg-amber-50 border-amber-200 text-amber-700',
+        'info': 'bg-blue-50 border-blue-200 text-blue-700'
+      };
+      content.className = `${colors[type]} border px-5 py-4 rounded-2xl shadow-lg expand-in`;
+      content.innerHTML = `<div class="flex items-start gap-3"><span class="text-xl flex-shrink-0">${type === 'success' ? '✅' : type === 'error' ? '❌' : type === 'warning' ? '⚠️' : '⏳'}</span><span class="font-medium text-sm">${text}</span></div>`;
+      area.classList.remove('hidden');
+      setTimeout(() => area.classList.add('hidden'), 5000);
+    }
+
+    async function loadStats() {
+      try {
+        const res = await fetch('/momhand/api/stats');
+        const data = await res.json();
+        if (data.success) {
+          const stats = data.data;
+          document.getElementById('stats').innerHTML = `
+            <div class="glass-card rounded-2xl p-4 text-center">
+              <div class="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-green-500 to-emerald-500 bg-clip-text text-transparent">${stats.total}</div>
+              <div class="text-xs text-gray-600 font-medium mt-1">总物品数</div>
+            </div>
+            <div class="glass-card rounded-2xl p-4 text-center">
+              <div class="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent">${stats.expiring_soon}</div>
+              <div class="text-xs text-gray-600 font-medium mt-1">即将过期</div>
+            </div>
+            <div class="glass-card rounded-2xl p-4 text-center">
+              <div class="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-red-500 to-rose-500 bg-clip-text text-transparent">${stats.expired}</div>
+              <div class="text-xs text-gray-600 font-medium mt-1">已过期</div>
+            </div>
+            <div class="glass-card rounded-2xl p-4 text-center">
+              <div class="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-blue-500 to-cyan-500 bg-clip-text text-transparent">${Object.keys(stats.by_location).length}</div>
+              <div class="text-xs text-gray-600 font-medium mt-1">存放位置</div>
+            </div>
+          `;
+        }
+      } catch (e) { console.error('加载统计失败:', e); }
+    }
+
+    async function loadItems(keyword = '', category = '') {
+      try {
+        let url = '/momhand/api/items';
+        if (keyword) url = `/momhand/api/search?q=${encodeURIComponent(keyword)}`;
+        
+        const res = await fetch(url);
+        const data = await res.json();
+        
+        const grid = document.getElementById('itemsGrid');
+        
+        if (!data.success || !data.data || data.data.length === 0) {
+          grid.innerHTML = '<div class="col-span-full glass-card rounded-2xl sm:rounded-3xl p-12 text-center"><div class="text-5xl mb-4">🔍</div><p class="text-gray-400">暂无物品</p></div>';
+          return;
+        }
+        
+        allItems = data.data;
+        allItems.forEach(item => { if (item.type) categories.add(item.type); });
+        updateCategoryFilter();
+        
+        let filteredItems = allItems;
+        if (category) filteredItems = allItems.filter(item => item.type === category);
+        
+        const today = new Date();
+        grid.innerHTML = filteredItems.map((item, index) => {
+          let expiryHtml = '';
+          if (item.expiry_date) {
+            const expiry = new Date(item.expiry_date);
+            const daysLeft = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
+            if (daysLeft < 0) expiryHtml = `<div class="mt-3 bg-red-50 text-red-600 px-3 py-2 rounded-xl text-xs font-semibold">⚠️ 已过期 ${Math.abs(daysLeft)} 天</div>`;
+            else if (daysLeft <= 7) expiryHtml = `<div class="mt-3 bg-amber-50 text-amber-600 px-3 py-2 rounded-xl text-xs font-semibold">⚠️ 还有 ${daysLeft} 天过期</div>`;
+          }
+          
+          return `
+            <div class="glass-card rounded-2xl p-4 sm:p-6 item-card">
+              <div class="flex items-start justify-between mb-4">
+                <div class="flex-1">
+                  <h3 class="text-lg font-bold text-gray-800 mb-2">${item.name}</h3>
+                  <span class="inline-block px-3 py-1 bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 rounded-full text-xs font-semibold">${item.type || '未分类'}</span>
+                </div>
+                <div class="text-2xl">📦</div>
+              </div>
+              <div class="space-y-2 mb-4 text-sm">
+                ${item.usage ? `<div class="flex items-start gap-2"><span>💡</span><span class="text-gray-600">${item.usage}</span></div>` : ''}
+                ${item.purchase_date ? `<div class="flex items-center gap-2"><span>📅</span><span class="text-gray-600">${item.purchase_date}</span></div>` : ''}
+                ${item.expiry_date ? `<div class="flex items-center gap-2"><span>⏰</span><span class="text-gray-600">${item.expiry_date}</span></div>` : ''}
+              </div>
+              <div class="bg-gradient-to-r from-blue-50 to-cyan-50 px-3 py-2 rounded-xl flex items-center gap-2">
+                <span class="text-lg">📍</span>
+                <span class="text-sm font-medium text-gray-700">${item.location}</span>
+              </div>
+              ${expiryHtml}
+            </div>
+          `;
+        }).join('');
+      } catch (e) {
+        console.error('加载物品失败:', e);
+        document.getElementById('itemsGrid').innerHTML = '<div class="col-span-full glass-card rounded-2xl sm:rounded-3xl p-12 text-center"><div class="text-5xl mb-4">❌</div><p class="text-gray-400">加载失败</p></div>';
+      }
+    }
+
+    function updateCategoryFilter() {
+      const select = document.getElementById('categoryFilter');
+      const currentValue = select.value;
+      select.innerHTML = '<option value="">全部分类</option>';
+      categories.forEach(cat => { select.innerHTML += `<option value="${cat}">${cat}</option>`; });
+      select.value = currentValue;
+    }
+
+    function quickSearch(keyword) {
+      document.getElementById('searchInput').value = keyword;
+      loadItems(keyword);
+    }
+
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      clearTimeout(window.searchTimeout);
+      window.searchTimeout = setTimeout(() => {
+        loadItems(e.target.value, document.getElementById('categoryFilter').value);
+      }, 300);
+    });
+
+    document.getElementById('categoryFilter').addEventListener('change', (e) => {
+      loadItems(document.getElementById('searchInput').value, e.target.value);
+    });
+
+    loadStats();
+    loadItems();
+  </script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "msg_id": "51304499-3cab-4934-a9f3-05afe9118644",
+  "original_message": "hi",
+  "processed_by": "openclaw_agent",
+  "timestamp": 1772181830,
+  "success": true,
+  "project": "bydesign",
+  "action": "greet",
+  "message": "你好，九魁！👋 欢迎回来。你之前提到要出差3天，需要我帮你查看或管理出行相关的安排吗？",
+  "refresh": "/bydesign/",
+  "data": {}
+}

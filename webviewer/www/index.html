@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Dummy的小弟 - 工具索引</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/transitions.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    * { font-family: 'Inter', system-ui, sans-serif; }
+    .gradient-bg {
+      background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+      min-height: 100vh;
+    }
+    .tool-card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      transition: all 0.3s ease;
+    }
+    .tool-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.25);
+    }
+    .tool-icon {
+      background: linear-gradient(135deg, var(--from) 0%, var(--to) 100%);
+      box-shadow: 0 10px 30px -10px var(--shadow);
+      transition: all 0.3s ease;
+    }
+    @media (hover: hover) {
+      .tool-card:hover .tool-icon {
+        transform: scale(1.1) rotate(-5deg);
+      }
+    }
+    .floating { animation: floating 3s ease-in-out infinite; }
+    @keyframes floating {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-10px); }
+    }
+    .slide-in { animation: slideIn 0.5s ease-out; }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .chat-scroll::-webkit-scrollbar { width: 6px; }
+    .chat-scroll::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+    .typing-dot {
+      animation: typing 1.4s infinite;
+      fill: #9ca3af;
+    }
+    @keyframes typing {
+      0%, 60%, 100% { transform: translateY(0); }
+      30% { transform: translateY(-10px); }
+    }
+  </style>
+</head>
+<body class="gradient-bg overflow-x-hidden">
+  <!-- Background Animation -->
+  <div class="fixed inset-0 overflow-hidden pointer-events-none">
+    <div class="absolute top-1/4 left-1/4 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 floating"></div>
+    <div class="absolute top-1/3 right-1/4 w-72 h-72 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 floating" style="animation-delay: -1s;"></div>
+  </div>
+
+  <div class="relative max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12 page-transition">
+    <!-- Header -->
+    <header class="text-center mb-8 sm:mb-10">
+      <div class="inline-block mb-4">
+        <div class="text-6xl sm:text-7xl mb-4 floating">🤖</div>
+      </div>
+      <h1 class="text-4xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 mb-3">Dummy 的小弟们</h1>
+      <p class="text-sm sm:text-base text-gray-300 font-light">Dummy's Minions · 你的生活管理工具集</p>
+    </header>
+
+    <!-- Chat Interface -->
+    <div class="max-w-3xl mx-auto mb-10 slide-in">
+      <div class="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden">
+        <!-- Chat Header -->
+        <div class="bg-gradient-to-r from-purple-500 to-pink-500 px-4 sm:px-6 py-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3 flex-1 min-w-0">
+              <div class="text-2xl sm:text-3xl">🤖</div>
+              <div class="min-w-0">
+                <h3 class="text-base sm:text-lg font-bold text-white truncate">Dummy 助手</h3>
+                <p class="text-xs text-purple-100">理解你的意图，帮你操作三个项目</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="text-xs text-purple-200 bg-white/20 px-3 py-1 rounded-full whitespace-nowrap hidden sm:block">💬 在线</div>
+              <button onclick="clearHistory()" class="text-white hover:text-purple-200 transition-colors p-2 text-sm" title="清空历史">🗑️</button>
+              <button onclick="showSettings()" class="text-white hover:text-purple-200 transition-colors p-2" title="设置">⚙️</button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Chat Messages -->
+        <div id="chatMessages" class="h-64 sm:h-80 overflow-y-auto p-4 sm:p-6 space-y-4 bg-gray-50 chat-scroll">
+          <!-- Welcome Message -->
+          <div class="flex items-start gap-3">
+            <div class="w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-xl flex-shrink-0">🤖</div>
+            <div class="bg-white rounded-2xl rounded-tl-none px-4 py-3 shadow-sm max-w-[85%]">
+              <p class="text-sm text-gray-700">你好！我是 Dummy 助手 👋</p>
+              <p class="text-sm text-gray-700 mt-2">直接输入你想说的话，我会理解并处理~</p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Input Area -->
+        <div class="border-t border-gray-200 p-4 bg-white">
+          <div class="flex gap-3 mb-3">
+            <input type="text" id="messageInput" 
+                   placeholder="例如：帮我记一下，大疆 action4 放在了电视柜上面的透明箱子里..." 
+                   class="flex-1 px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none transition-all text-gray-700 text-sm"
+                   autocomplete="off">
+            <button onclick="sendMessage()" class="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-5 sm:px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all flex items-center gap-2 flex-shrink-0">
+              <span class="text-lg">📤</span>
+              <span class="hidden sm:inline">发送</span>
+            </button>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <span class="text-xs text-gray-400 w-full mb-1">试试这样说：</span>
+            <button onclick="fillExample('我要出差 3 天')" class="text-xs px-3 py-1.5 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-all">✈️ 出差 3 天</button>
+            <button onclick="fillExample('帮我记一下，我的大疆 action4 放在了电视柜上面的透明箱子里')" class="text-xs px-3 py-1.5 bg-purple-50 text-purple-600 rounded-full hover:bg-purple-100 transition-all">📦 记录物品</button>
+            <button onclick="fillExample('找一下感冒药放在哪里')" class="text-xs px-3 py-1.5 bg-green-50 text-green-600 rounded-full hover:bg-green-100 transition-all">🔍 找东西</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tools Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-10">
+      <!-- By Design -->
+      <a href="/bydesign/" class="tool-card group rounded-2xl sm:rounded-3xl p-5 sm:p-6 block relative overflow-hidden card-stagger ripple" style="--from: #3b82f6; --to: #06b6d4; --shadow: #3b82f6;" onclick="showCardLoading(event, this)">
+        <div class="tool-icon w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center text-2xl sm:text-3xl mb-4" style="--from: #3b82f6; --to: #06b6d4; --shadow: #3b82f6;">✈️</div>
+        <h2 class="text-lg sm:text-xl font-bold text-gray-800 mb-1">已读不回</h2>
+        <p class="text-xs text-gray-500 mb-3">By Design</p>
+        <p class="text-xs sm:text-sm text-gray-600 line-clamp-2">出远门前读了这个，就不需要单独返回</p>
+      </a>
+
+      <!-- Cherry Pick -->
+      <a href="/cherry-pick/" class="tool-card group rounded-2xl sm:rounded-3xl p-5 sm:p-6 block relative overflow-hidden card-stagger ripple" style="--from: #8b5cf6; --to: #ec4899; --shadow: #8b5cf6;" onclick="showCardLoading(event, this)">
+        <div class="tool-icon w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center text-2xl sm:text-3xl mb-4" style="--from: #8b5cf6; --to: #ec4899; --shadow: #8b5cf6;">🏠</div>
+        <h2 class="text-lg sm:text-xl font-bold text-gray-800 mb-1">一搬不丢</h2>
+        <p class="text-xs text-gray-500 mb-3">Cherry Pick</p>
+        <p class="text-xs sm:text-sm text-gray-600 line-clamp-2">一直搬家，东西也不会弄丢</p>
+      </a>
+
+      <!-- Momhand -->
+      <a href="/momhand/" class="tool-card group rounded-2xl sm:rounded-3xl p-5 sm:p-6 block relative overflow-hidden card-stagger ripple" style="--from: #10b981; --to: #3b82f6; --shadow: #10b981;" onclick="showCardLoading(event, this)">
+        <div class="tool-icon w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center text-2xl sm:text-3xl mb-4" style="--from: #10b981; --to: #3b82f6; --shadow: #10b981;">👋</div>
+        <h2 class="text-lg sm:text-xl font-bold text-gray-800 mb-1">妈妈的手</h2>
+        <p class="text-xs text-gray-500 mb-3">Momhand</p>
+        <p class="text-xs sm:text-sm text-gray-600 line-clamp-2">💬 "你这孩子，这不就在电视柜上嘛！"</p>
+      </a>
+    </div>
+
+    <!-- Footer -->
+    <footer class="text-center py-6 border-t border-white/10">
+      <p class="text-gray-400 text-sm">🎯 让生活更有序 · Powered by OpenClaw</p>
+    </footer>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settingsModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
+      <!-- Modal Header -->
+      <div class="bg-gradient-to-r from-purple-500 to-pink-500 px-6 py-4 flex items-center justify-between">
+        <h2 class="text-xl font-bold text-white flex items-center gap-2">
+          <span>⚙️</span>
+          <span>提示词设置</span>
+        </h2>
+        <button onclick="hideSettings()" class="text-white hover:text-purple-200 transition-colors text-2xl">✕</button>
+      </div>
+      
+      <!-- Modal Body -->
+      <div class="p-6 overflow-y-auto max-h-[60vh]">
+        <div class="mb-4">
+          <label class="block text-sm font-semibold text-gray-700 mb-2">
+            📝 系统提示词
+          </label>
+          <p class="text-xs text-gray-500 mb-3">
+            这个提示词会附加在每条消息前面，告诉 OpenClaw 如何理解你的意图
+          </p>
+          <textarea id="systemPrompt" rows="12" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none transition-all text-sm font-mono"></textarea>
+        </div>
+        
+        <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
+          <h4 class="text-sm font-semibold text-blue-800 mb-2">💡 提示词说明</h4>
+          <ul class="text-xs text-blue-700 space-y-1">
+            <li>• 提示词会附加在用户消息前面</li>
+            <li>• 告诉 OpenClaw 如何理解意图</li>
+            <li>• 指定返回的 JSON 格式</li>
+            <li>• 修改后点击"保存"生效</li>
+          </ul>
+        </div>
+      </div>
+      
+      <!-- Modal Footer -->
+      <div class="border-t border-gray-200 px-6 py-4 flex items-center justify-between bg-gray-50">
+        <button onclick="resetPrompt()" class="text-gray-600 hover:text-gray-800 text-sm font-medium">
+          🔄 恢复默认
+        </button>
+        <div class="flex gap-3">
+          <button onclick="hideSettings()" class="px-5 py-2.5 rounded-xl border-2 border-gray-200 text-gray-700 font-medium hover:bg-gray-100 transition-all">
+            取消
+          </button>
+          <button onclick="saveSettings()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium hover:shadow-lg transition-all">
+            💾 保存设置
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentMsgId = null;
+    let pollTimer = null;
+    
+    // 默认提示词
+    const DEFAULT_SYSTEM_PROMPT = `理解这些信息的意图，并选择 webviewer 中合适的模块保存这些信息，然后刷新页面的显示。
+
+用户消息："{message}"
+
+可用项目：
+1. 出行相关（出差、旅行、出行）→ By Design (/bydesign/)
+   - 动作：创建出行记录
+   - API: POST /bydesign/api/trips
+   - 数据：{name, description}
+
+2. 搬家相关（搬家、打包、物品记录）→ Cherry Pick (/cherry-pick/)
+   - 动作：记录物品位置
+   - API: POST /cherry-pick/api/moves/{moveId}/items
+   - 数据：{name, before_location, after_location}
+
+3. 物品相关（找、查询、记录位置）→ Momhand (/momhand/)
+   - 动作：添加/搜索物品
+   - API: POST /momhand/api/items 或 GET /momhand/api/search?q=xxx
+   - 数据：{name, type, location, usage}
+
+请：
+1. 理解用户意图
+2. 选择合适的项目
+3. **执行具体的记录动作**（调用相应的 API 保存数据）
+4. 返回确认消息
+
+返回 JSON 格式：
+{
+  "success": true,
+  "project": "bydesign 或 cherry_pick 或 momhand",
+  "action": "操作类型",
+  "message": "友好的回复，确认已保存",
+  "refresh": "/页面路径/",
+  "data": {保存的数据}
+}`;
+
+    function fillExample(text) {
+      const input = document.getElementById('messageInput');
+      input.value = text;
+      input.focus();
+    }
+    
+    // 设置相关函数
+    function showSettings() {
+      const modal = document.getElementById('settingsModal');
+      modal.classList.remove('hidden');
+      
+      // 加载当前提示词
+      const savedPrompt = localStorage.getItem('systemPrompt');
+      document.getElementById('systemPrompt').value = savedPrompt || DEFAULT_SYSTEM_PROMPT;
+    }
+    
+    function hideSettings() {
+      const modal = document.getElementById('settingsModal');
+      modal.classList.add('hidden');
+    }
+    
+    function saveSettings() {
+      const prompt = document.getElementById('systemPrompt').value;
+      localStorage.setItem('systemPrompt', prompt);
+      
+      // 显示保存成功提示
+      alert('✅ 设置已保存！\n\n下次发送消息时会使用新的提示词。');
+      hideSettings();
+    }
+    
+    function resetPrompt() {
+      if (confirm('确定要恢复默认提示词吗？')) {
+        document.getElementById('systemPrompt').value = DEFAULT_SYSTEM_PROMPT;
+      }
+    }
+    
+    // 点击模态框外部关闭
+    document.getElementById('settingsModal').addEventListener('click', function(e) {
+      if (e.target === this) {
+        hideSettings();
+      }
+    });
+
+    // 加载历史消息
+    function loadHistory() {
+      const history = JSON.parse(localStorage.getItem('chatHistory') || '[]');
+      const messagesDiv = document.getElementById('chatMessages');
+      
+      // 清空欢迎消息，加载历史
+      if (history.length > 0) {
+        messagesDiv.innerHTML = '';
+        history.forEach(msg => {
+          const messageDiv = document.createElement('div');
+          messageDiv.className = 'flex items-start gap-3 slide-in';
+          
+          if (msg.isUser) {
+            messageDiv.innerHTML = `
+              <div class="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 flex items-center justify-center text-xl flex-shrink-0">👤</div>
+              <div class="bg-blue-500 text-white rounded-2xl rounded-tr-none px-4 py-3 shadow-sm max-w-[85%]">
+                <p class="text-sm">${escapeHtml(msg.content)}</p>
+              </div>
+            `;
+          } else {
+            messageDiv.innerHTML = `
+              <div class="w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-xl flex-shrink-0">🤖</div>
+              <div class="bg-white rounded-2xl rounded-tl-none px-4 py-3 shadow-sm max-w-[85%]">
+                <div class="text-sm text-gray-700">${msg.content}</div>
+              </div>
+            `;
+          }
+          
+          messagesDiv.appendChild(messageDiv);
+        });
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      }
+    }
+    
+    // 保存消息到历史
+    function saveToHistory(content, isUser) {
+      const history = JSON.parse(localStorage.getItem('chatHistory') || '[]');
+      history.push({ content, isUser, timestamp: Date.now() });
+      
+      // 限制最多保存 50 条消息
+      if (history.length > 50) {
+        history.shift();
+      }
+      
+      localStorage.setItem('chatHistory', JSON.stringify(history));
+    }
+    
+    function addMessage(content, isUser = false, save = true) {
+      const messagesDiv = document.getElementById('chatMessages');
+      const messageDiv = document.createElement('div');
+      messageDiv.className = 'flex items-start gap-3 slide-in';
+      
+      if (isUser) {
+        messageDiv.innerHTML = `
+          <div class="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 flex items-center justify-center text-xl flex-shrink-0">👤</div>
+          <div class="bg-blue-500 text-white rounded-2xl rounded-tr-none px-4 py-3 shadow-sm max-w-[85%]">
+            <p class="text-sm">${escapeHtml(content)}</p>
+          </div>
+        `;
+      } else {
+        messageDiv.innerHTML = `
+          <div class="w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-xl flex-shrink-0">🤖</div>
+          <div class="bg-white rounded-2xl rounded-tl-none px-4 py-3 shadow-sm max-w-[85%]">
+            <div class="text-sm text-gray-700">${content}</div>
+          </div>
+        `;
+      }
+      
+      messagesDiv.appendChild(messageDiv);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      
+      // 保存到历史
+      if (save) {
+        saveToHistory(content, isUser);
+      }
+    }
+
+    function showTyping() {
+      const messagesDiv = document.getElementById('chatMessages');
+      const typingDiv = document.createElement('div');
+      typingDiv.id = 'typingIndicator';
+      typingDiv.className = 'flex items-start gap-3 slide-in';
+      typingDiv.innerHTML = `
+        <div class="w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-xl flex-shrink-0">🤖</div>
+        <div class="bg-white rounded-2xl rounded-tl-none px-4 py-3 shadow-sm">
+          <div class="flex gap-1">
+            <div class="w-2 h-2 rounded-full typing-dot" style="animation-delay: 0s;"></div>
+            <div class="w-2 h-2 rounded-full typing-dot" style="animation-delay: 0.2s;"></div>
+            <div class="w-2 h-2 rounded-full typing-dot" style="animation-delay: 0.4s;"></div>
+          </div>
+        </div>
+      `;
+      messagesDiv.appendChild(typingDiv);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    function removeTyping() {
+      const typingDiv = document.getElementById('typingIndicator');
+      if (typingDiv) typingDiv.remove();
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById('messageInput');
+      const message = input.value.trim();
+      
+      if (!message) return;
+      
+      // 添加用户消息到历史和界面
+      addMessage(message, true);
+      input.value = '';
+      
+      // 显示输入中
+      showTyping();
+      
+      try {
+        const response = await fetch('/api/send-message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message, timestamp: Date.now() })
+        });
+        
+        const result = await response.json();
+        removeTyping();
+        
+        // 检查 success 字段
+        if (result.success) {
+          // 如果是异步处理（processing: true），开始轮询
+          if (result.processing) {
+            addMessage('⏳ 后台处理中，请稍候...', false);
+            pollResult(result.msg_id);
+          } else {
+            // 同步处理完成
+            const formattedResult = formatResult(result.message || '处理完成');
+            addMessage(formattedResult, false);
+            
+            // 如果需要刷新页面
+            if (result.refresh) {
+              addMessage(`🔄 即将跳转到 ${result.refresh}...`, false);
+              setTimeout(() => {
+                window.location.href = result.refresh + '?t=' + Date.now();
+              }, 3000);
+            }
+          }
+        } else {
+          addMessage('抱歉，处理失败了，请重试~', false);
+        }
+      } catch (error) {
+        removeTyping();
+        addMessage('发送失败，请检查网络连接', false);
+      }
+    }
+    
+    // 轮询处理结果
+    function pollResult(msgId) {
+      let attempts = 0;
+      const maxAttempts = 60;
+      
+      const pollTimer = setInterval(async () => {
+        attempts++;
+        try {
+          const response = await fetch(`/api/message-result?msg_id=${msgId}`);
+          const result = await response.json();
+          
+          if (result.processed || !result.success) {
+            clearInterval(pollTimer);
+            
+            if (result.data && result.data.success !== false) {
+              const formattedResult = formatResult(result.data.message || '处理完成');
+              addMessage(formattedResult, false);
+              
+              if (result.data.refresh) {
+                addMessage(`🔄 即将跳转到 ${result.data.refresh}...`, false);
+                setTimeout(() => {
+                  window.location.href = result.data.refresh + '?t=' + Date.now();
+                }, 2000);
+              }
+            } else {
+              addMessage(`❌ ${result.data?.error || result.data?.message || '处理失败'}`, false);
+            }
+          } else if (attempts >= maxAttempts) {
+            clearInterval(pollTimer);
+            addMessage('⏰ 处理超时，请刷新页面查看结果', false);
+          }
+        } catch (error) {
+          console.error('轮询失败:', error);
+        }
+      }, 500);
+    }
+
+    function formatResult(text) {
+      // 将 emoji 和换行转换为 HTML
+      return text
+        .replace(/\n/g, '<br>')
+        .replace(/✅/g, '<span class="text-green-500">✅</span>')
+        .replace(/📦/g, '<span class="text-purple-500">📦</span>')
+        .replace(/📍/g, '<span class="text-blue-500">📍</span>')
+        .replace(/👉/g, '<span class="text-pink-500">👉</span>');
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Enter 键发送
+    document.getElementById('messageInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+    
+    // 清空历史消息
+    function clearHistory() {
+      if (confirm('确定要清空所有聊天历史吗？')) {
+        localStorage.removeItem('chatHistory');
+        location.reload();
+      }
+    }
+    
+    // 卡片点击加载效果
+    function showCardLoading(event, card) {
+      // 添加加载状态
+      card.classList.add('loading');
+      
+      // 0.8 秒后移除加载状态（页面应该已经加载）
+      setTimeout(() => {
+        card.classList.remove('loading');
+      }, 800);
+    }
+    
+    // 页面加载时初始化
+    window.addEventListener('DOMContentLoaded', () => {
+      loadHistory();
+    });
+  </script>
+</body>
+</html>

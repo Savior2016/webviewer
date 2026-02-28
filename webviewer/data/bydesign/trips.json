@@ -1,0 +1,555 @@
+{
+  "trips": [
+    {
+      "id": "4e9af21a-4a88-411b-b7c0-e6eb143cfdf2",
+      "name": "过年回家",
+      "description": "",
+      "created_at": 1772154108,
+      "status": "completed",
+      "checklist_snapshot": [
+        {
+          "id": "1",
+          "text": "关闭所有窗户",
+          "completed": false
+        },
+        {
+          "id": "2",
+          "text": "关闭所有电器电源",
+          "completed": false
+        },
+        {
+          "id": "3",
+          "text": "检查门锁",
+          "completed": false
+        },
+        {
+          "id": "4",
+          "text": "清空垃圾",
+          "completed": false
+        },
+        {
+          "id": "5",
+          "text": "检查水龙头",
+          "completed": false
+        }
+      ],
+      "custom_items": [],
+      "completed_at": 1772242532
+    },
+    {
+      "id": "3f9bc40e-704a-4b50-8de2-ac040df20647",
+      "name": "出差3天",
+      "description": "3天出行",
+      "created_at": 1772164744,
+      "status": "planning",
+      "checklist_snapshot": [
+        {
+          "id": "1",
+          "text": "关闭所有窗户",
+          "completed": false
+        },
+        {
+          "id": "2",
+          "text": "关闭所有电器电源",
+          "completed": false
+        },
+        {
+          "id": "3",
+          "text": "检查门锁",
+          "completed": false
+        },
+        {
+          "id": "4",
+          "text": "清空垃圾",
+          "completed": false
+        },
+        {
+          "id": "5",
+          "text": "检查水龙头",
+          "completed": false
+        }
+      ],
+      "custom_items": []
+    },
+    {
+      "id": "f95ec14e-422d-4bb6-9589-8a223ecc8c2a",
+      "name": "出行天",
+      "description": "天出行",
+      "created_at": 1772187735,
+      "status": "planning",
+      "checklist_snapshot": [
+        {
+          "id": "1",
+          "text": "关闭所有窗户",
+          "completed": false
+        },
+        {
+          "id": "2",
+          "text": "关闭所有电器电源",
+          "completed": false
+        },
+        {
+          "id": "3",
+          "text": "检查门锁",
+          "completed": false
+        },
+        {
+          "id": "4",
+          "text": "清空垃圾",
+          "completed": false
+        },
+        {
+          "id": "5",
+          "text": "检查水龙头",
+          "completed": false
+        }
+      ],
+      "custom_items": []
+    },
+    {
+      "id": "629463ce-da7e-48ee-bc65-16cc7075df2b",
+      "name": "出行天",
+      "description": "天出行",
+      "created_at": 1772187974,
+      "status": "planning",
+      "checklist_snapshot": [
+        {
+          "id": "1",
+          "text": "关闭所有窗户",
+          "completed": false
+        },
+        {
+          "id": "2",
+          "text": "关闭所有电器电源",
+          "completed": false
+        },
+        {
+          "id": "3",
+          "text": "检查门锁",
+          "completed": false
+        },
+        {
+          "id": "4",
+          "text": "清空垃圾",
+          "completed": false
+        },
+        {
+          "id": "5",
+          "text": "检查水龙头",
+          "completed": false
+        }
+      ],
+      "custom_items": []
+    },
+    {
+      "id": "4484c747-2676-45cd-b751-4fc1ad2126d1",
+      "name": "出行",
+      "description": "",
+      "created_at": 1772242145,
+      "status": "planning",
+      "checklist_snapshot": [
+        {
+          "id": "ac30165d-545d-40d7-80f7-d020c981abeb",
+          "text": "带充电宝",
+          "completed": false
+        },
+        {
+          "id": "d7b26cf7-d3ed-4d8f-98e5-68e02815fb2c",
+          "text": "带墨镜",
+          "completed": false
+        },
+        {
+          "id": "62008f9c-acb0-4844-9a75-d0e8a7190bf6",
+          "text": "关门窗",
+          "completed": false
+        },
+        {
+          "id": "1d2350f3-db55-46f7-9542-cab955107084",
+          "text": "检查 airtag 电池",
+          "completed": false
+        },
+        {
+          "id": "e82294bf-4c16-41bc-8b1c-793577f066b6",
+          "text": "关灯",
+          "completed": false
+        },
+        {
+          "id": "9c9d8e15-2845-4fc2-851d-d2e65220620b",
+          "text": "拿药",
+          "completed": false
+        },
+        {
+          "id": "3d1e7bcb-b255-4b67-98c5-dd2c92a17ac5",
+          "text": "充网费",
+          "completed": false
+        },
+        {
+          "id": "2d07e1a7-f123-45f2-8836-3dedc93d1050",
+          "text": "铲屎",
+          "completed": false
+        },
+        {
+          "id": "bb0caadf-0e74-4598-bdb5-a142e9e8b66e",
+          "text": "门禁放手套箱拍照",
+          "completed": false
+        },
+        {
+          "id": "6a9d052d-f1c0-4247-92a7-66bee77dcb38",
+          "text": "给猫加水",
+          "completed": false
+        },
+        {
+          "id": "1c9fb8b2-98f5-48df-9329-c1691dadbea9",
+          "text": "充电费",
+          "completed": false
+        },
+        {
+          "id": "ccc052a6-3a42-4c78-8d94-a246f20047b8",
+          "text": "猫粮机加粮",
+          "completed": false
+        },
+        {
+          "id": "3c1a1e2e-7f7e-4a64-9a9c-fcb388e69b4e",
+          "text": "电脑插虚拟 hdmi",
+          "completed": false
+        },
+        {
+          "id": "a6a8cf14-275a-486a-b573-ef9c251842fb",
+          "text": "藏备用钥匙",
+          "completed": false
+        },
+        {
+          "id": "eef45042-fe87-4c81-8959-aa99bb301bf3",
+          "text": "带耳机",
+          "completed": false
+        },
+        {
+          "id": "47151578-4b73-4bae-9743-08c37b36572f",
+          "text": "带身份证",
+          "completed": false
+        },
+        {
+          "id": "1d216e2d-ad9d-4eb8-acee-51ebc40152c7",
+          "text": "检查摄像头",
+          "completed": false
+        },
+        {
+          "id": "c229bcc6-0471-484c-8049-f6e79cfb774f",
+          "text": "猫粮机加电池",
+          "completed": false
+        },
+        {
+          "id": "006b0151-bcd8-4962-8468-77943587a23e",
+          "text": "带充电宝",
+          "completed": false
+        },
+        {
+          "id": "8c3e2456-2401-43ba-ba3c-2e38ceac2a10",
+          "text": "带墨镜",
+          "completed": false
+        },
+        {
+          "id": "582b20c6-ecf8-44a3-8491-be785a02e318",
+          "text": "关门窗",
+          "completed": false
+        }
+      ],
+      "custom_items": []
+    },
+    {
+      "id": "c9d2aff7-68b2-41a5-8e14-7a8989691da4",
+      "name": "出行",
+      "description": "",
+      "created_at": 1772242286,
+      "status": "planning",
+      "checklist_snapshot": [
+        {
+          "id": "ac30165d-545d-40d7-80f7-d020c981abeb",
+          "text": "带充电宝",
+          "completed": false
+        },
+        {
+          "id": "d7b26cf7-d3ed-4d8f-98e5-68e02815fb2c",
+          "text": "带墨镜",
+          "completed": false
+        },
+        {
+          "id": "62008f9c-acb0-4844-9a75-d0e8a7190bf6",
+          "text": "关门窗",
+          "completed": false
+        },
+        {
+          "id": "1d2350f3-db55-46f7-9542-cab955107084",
+          "text": "检查 airtag 电池",
+          "completed": false
+        },
+        {
+          "id": "e82294bf-4c16-41bc-8b1c-793577f066b6",
+          "text": "关灯",
+          "completed": false
+        },
+        {
+          "id": "9c9d8e15-2845-4fc2-851d-d2e65220620b",
+          "text": "拿药",
+          "completed": false
+        },
+        {
+          "id": "3d1e7bcb-b255-4b67-98c5-dd2c92a17ac5",
+          "text": "充网费",
+          "completed": false
+        },
+        {
+          "id": "2d07e1a7-f123-45f2-8836-3dedc93d1050",
+          "text": "铲屎",
+          "completed": false
+        },
+        {
+          "id": "bb0caadf-0e74-4598-bdb5-a142e9e8b66e",
+          "text": "门禁放手套箱拍照",
+          "completed": false
+        },
+        {
+          "id": "6a9d052d-f1c0-4247-92a7-66bee77dcb38",
+          "text": "给猫加水",
+          "completed": false
+        },
+        {
+          "id": "1c9fb8b2-98f5-48df-9329-c1691dadbea9",
+          "text": "充电费",
+          "completed": false
+        },
+        {
+          "id": "ccc052a6-3a42-4c78-8d94-a246f20047b8",
+          "text": "猫粮机加粮",
+          "completed": false
+        },
+        {
+          "id": "3c1a1e2e-7f7e-4a64-9a9c-fcb388e69b4e",
+          "text": "电脑插虚拟 hdmi",
+          "completed": false
+        },
+        {
+          "id": "a6a8cf14-275a-486a-b573-ef9c251842fb",
+          "text": "藏备用钥匙",
+          "completed": false
+        },
+        {
+          "id": "eef45042-fe87-4c81-8959-aa99bb301bf3",
+          "text": "带耳机",
+          "completed": false
+        },
+        {
+          "id": "47151578-4b73-4bae-9743-08c37b36572f",
+          "text": "带身份证",
+          "completed": false
+        },
+        {
+          "id": "1d216e2d-ad9d-4eb8-acee-51ebc40152c7",
+          "text": "检查摄像头",
+          "completed": false
+        },
+        {
+          "id": "c229bcc6-0471-484c-8049-f6e79cfb774f",
+          "text": "猫粮机加电池",
+          "completed": false
+        },
+        {
+          "id": "006b0151-bcd8-4962-8468-77943587a23e",
+          "text": "带充电宝",
+          "completed": false
+        },
+        {
+          "id": "8c3e2456-2401-43ba-ba3c-2e38ceac2a10",
+          "text": "带墨镜",
+          "completed": false
+        },
+        {
+          "id": "582b20c6-ecf8-44a3-8491-be785a02e318",
+          "text": "关门窗",
+          "completed": false
+        },
+        {
+          "id": "44b5c661-626f-4fcf-bf51-1355a9cd98a5",
+          "text": "检查 airtag 电池",
+          "completed": false
+        },
+        {
+          "id": "85ff12dd-c7ad-46d5-b3e3-621fc22e7d6e",
+          "text": "关灯",
+          "completed": false
+        },
+        {
+          "id": "345760a0-0024-44ca-b3e4-7244d7777993",
+          "text": "拿药",
+          "completed": false
+        },
+        {
+          "id": "f70dbc8a-b199-4d87-9a1a-f85bd5c3a664",
+          "text": "充网费",
+          "completed": false
+        },
+        {
+          "id": "e5356c3f-1579-4f56-8e60-f08c34e9e6f4",
+          "text": "铲屎",
+          "completed": false
+        },
+        {
+          "id": "540a074b-8942-4438-99fc-fbfe4b3e36e7",
+          "text": "门禁放手套箱拍照",
+          "completed": false
+        },
+        {
+          "id": "20b92b74-c222-472b-b922-3c8a2c7779dd",
+          "text": "给猫加水",
+          "completed": false
+        },
+        {
+          "id": "5447ab26-5af4-4831-b0c3-a6a148c84900",
+          "text": "充电费",
+          "completed": false
+        },
+        {
+          "id": "c37a761d-e03d-4b9f-be0c-8e2b09633719",
+          "text": "猫粮机加粮",
+          "completed": false
+        },
+        {
+          "id": "3a1bdbf3-6eae-4d84-bf68-570aa810753b",
+          "text": "电脑插虚拟 hdmi",
+          "completed": false
+        },
+        {
+          "id": "119093dc-fbd3-4af3-90cd-029bd34f6e91",
+          "text": "藏备用钥匙",
+          "completed": false
+        },
+        {
+          "id": "76303d98-6de6-4134-92b3-513b13eb3f83",
+          "text": "带耳机",
+          "completed": false
+        },
+        {
+          "id": "b6f30d53-4223-4be4-8b54-780228fd5675",
+          "text": "带身份证",
+          "completed": false
+        },
+        {
+          "id": "9a477f6d-8d48-4bda-8f31-fbf000cd5b79",
+          "text": "检查摄像头",
+          "completed": false
+        },
+        {
+          "id": "eab5122b-ac6e-46f2-b73e-962b2190b110",
+          "text": "猫粮机加电池",
+          "completed": false
+        },
+        {
+          "id": "3704c7cc-6ffe-46ff-9d4a-b34cfd098eff",
+          "text": "带充电宝",
+          "completed": false
+        },
+        {
+          "id": "34b65d13-ad1e-4ac1-b684-abe9fbf26572",
+          "text": "带墨镜",
+          "completed": false
+        },
+        {
+          "id": "135e04cb-afc6-4ceb-af90-ce39a74d476e",
+          "text": "关门窗",
+          "completed": false
+        },
+        {
+          "id": "1fcdfe25-b31c-405a-9c0c-33504764a2be",
+          "text": "检查 airtag 电池",
+          "completed": false
+        },
+        {
+          "id": "4aa7413e-5f12-4d81-b25f-cc65fd0ae29c",
+          "text": "关灯",
+          "completed": false
+        },
+        {
+          "id": "c6041499-588a-41fe-989f-d26f566686e7",
+          "text": "拿药",
+          "completed": false
+        },
+        {
+          "id": "90480ab2-c21a-4def-99e5-05b69fff7805",
+          "text": "充网费",
+          "completed": false
+        },
+        {
+          "id": "109aed87-196d-48d4-b585-07a1a0b9b210",
+          "text": "铲屎",
+          "completed": false
+        },
+        {
+          "id": "863fc8c7-2e5d-4a40-93a4-0acc11eea941",
+          "text": "门禁放手套箱拍照",
+          "completed": false
+        },
+        {
+          "id": "0b444d8f-b80a-4033-8a58-a41c16e4bbe0",
+          "text": "给猫加水",
+          "completed": false
+        },
+        {
+          "id": "6dd37c36-0fe0-4939-ab8c-a4c43ed3606f",
+          "text": "充电费",
+          "completed": false
+        },
+        {
+          "id": "5ea7b295-ac6e-4c24-82ec-6307495d0744",
+          "text": "猫粮机加粮",
+          "completed": false
+        },
+        {
+          "id": "b0a663c8-6a2b-408a-ac4c-5c53fd0ae54b",
+          "text": "电脑插虚拟 hdmi",
+          "completed": false
+        },
+        {
+          "id": "057e7002-cf1e-40fd-9baf-a0295b370369",
+          "text": "藏备用钥匙",
+          "completed": false
+        },
+        {
+          "id": "575fe702-b6b9-450d-8ef7-3a3383605803",
+          "text": "带耳机",
+          "completed": false
+        },
+        {
+          "id": "f02b3b47-12aa-444f-80a5-9c0c1334b1d7",
+          "text": "带身份证",
+          "completed": false
+        },
+        {
+          "id": "f6f5ce0b-9650-4498-af91-bced7084269e",
+          "text": "检查摄像头",
+          "completed": false
+        },
+        {
+          "id": "1ec0dddf-7c4b-4bdb-8781-fc4e3a1929e2",
+          "text": "猫粮机加电池",
+          "completed": false
+        },
+        {
+          "id": "1bd41d61-85af-405e-85f9-396fec5f5825",
+          "text": "带充电宝",
+          "completed": false
+        },
+        {
+          "id": "bd208455-ee88-4119-b652-6d6401432fe2",
+          "text": "带墨镜",
+          "completed": false
+        },
+        {
+          "id": "4d86b2e1-739e-441c-ac51-b35d8eb26ed9",
+          "text": "关门窗",
+          "completed": false
+        }
+      ],
+      "custom_items": []
+    }
+  ]
+}

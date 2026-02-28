@@ -1,0 +1,1059 @@
+#!/usr/bin/env python3
+"""
+WebViewer - 本地 HTTPS 网站服务
+监听 443 端口，支持外网访问
+集成 momhand 物品管理 API
+支持通过 Feishu API 发送和接收消息
+"""
+
+import http.server
+import ssl
+import socketserver
+import os
+import json
+from urllib.parse import urlparse, parse_qs
+from pathlib import Path
+import hashlib
+import time
+import requests
+import uuid
+from datetime import datetime
+
+PORT = 443
+WEB_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "www")
+CERT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "selfsigned.crt")
+KEY_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "selfsigned.key")
+
+# 导入 momhand API（每次请求时重新加载，确保数据最新）
+import sys
+import importlib
+
+def get_momhand_manager():
+    """获取最新的物品管理器实例（SQLite 数据库版本）"""
+    if 'momhand_manager_db' in sys.modules:
+        importlib.reload(sys.modules['momhand_manager_db'])
+    sys.path.insert(0, "/root/.openclaw/workspace/webviewer")
+    from momhand_manager_db import manager
+    return manager
+
+# 导入 cherry-pick API
+def get_cherry_pick_manager():
+    """获取最新的搬家管理器实例"""
+    if 'cherry_pick_manager' in sys.modules:
+        importlib.reload(sys.modules['cherry_pick_manager'])
+    sys.path.insert(0, "/root/.openclaw/workspace/webviewer")
+    from cherry_pick_manager import manager
+    return manager
+
+# 导入 bydesign API
+def get_bydesign_manager():
+    """获取最新的出行管理器实例"""
+    if 'bydesign_manager' in sys.modules:
+        importlib.reload(sys.modules['bydesign_manager'])
+    sys.path.insert(0, "/root/.openclaw/workspace/webviewer")
+    from bydesign_manager import manager
+    return manager
+
+
+# 设置文件路径
+SETTINGS_FILE = Path("/root/.openclaw/workspace/webviewer/data/settings.json")
+
+def get_system_prompt():
+    """获取系统提示词"""
+    try:
+        if SETTINGS_FILE.exists():
+            with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
+                settings = json.load(f)
+                return settings.get('system_prompt', '')
+    except Exception as e:
+        print(f"⚠️  读取设置失败：{e}")
+    return ''
+
+def save_system_prompt(prompt: str):
+    """保存系统提示词"""
+    try:
+        SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        settings = {'system_prompt': prompt}
+        with open(SETTINGS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(settings, f, ensure_ascii=False, indent=2)
+        return True
+    except Exception as e:
+        print(f"❌ 保存设置失败：{e}")
+        return False
+
+def execute_project_save(project: str, result: dict):
+    """
+    执行项目保存操作
+    """
+    data = result.get('data', {})
+    
+    print(f"📝 执行 {project} 保存：data={data}")
+    
+    try:
+        if project == 'bydesign':
+            manager = get_bydesign_manager()
+            
+            # 检查是否是批量添加检查项
+            if data.get('action') == 'add_checklist_items' or 'items_added' in data:
+                items = data.get('items_added', [])
+                added = manager.add_checklist_items_batch(items)
+                print(f"✅ By Design 已批量添加 {len(added)} 项检查")
+            elif data.get('action') == 'add_checklist':
+                # 单个检查项
+                text = data.get('text', data.get('item', ''))
+                if text:
+                    item = manager.add_checklist_item(text)
+                    print(f"✅ By Design 已添加检查项：{item['id']}")
+            else:
+                # 创建出行记录
+                trip_name = data.get('name', '出行')
+                description = data.get('description', '')
+                trip = manager.create_trip(name=trip_name, description=description)
+                print(f"✅ By Design 已创建出行：{trip['id']}")
+        
+        elif project == 'cherry_pick':
+            # 记录物品
+            manager = get_cherry_pick_manager()
+            moves = manager.get_all_moves()
+            if moves:
+                move_id = moves[0]['id']
+                item = manager.add_item(
+                    move_id=move_id,
+                    name=data.get('name', '物品'),
+                    before_location=data.get('before_location', ''),
+                    after_location=data.get('after_location', '')
+                )
+                print(f"✅ Cherry Pick 已记录物品：{item['id']}")
+        
+        elif project == 'momhand':
+            # 添加物品
+            manager = get_momhand_manager()
+            item = manager.add_item({
+                'name': data.get('name', '物品'),
+                'type': data.get('type', '其他'),
+                'location': data.get('location', ''),
+                'usage': data.get('usage', '')
+            })
+            print(f"✅ Momhand 已添加物品：{item['id']}")
+    
+    except Exception as e:
+        print(f"❌ 保存失败：{e}")
+
+def execute_save_action(result: dict):
+    """
+    执行保存操作（兼容旧代码）
+    """
+    project = result.get('project')
+    execute_project_save(project, result)
+
+
+# 导入 bydesign API
+def get_bydesign_manager():
+    """获取最新的出行管理器实例"""
+    if 'bydesign_manager' in sys.modules:
+        importlib.reload(sys.modules['bydesign_manager'])
+    sys.path.insert(0, "/root/.openclaw/workspace/webviewer")
+    from bydesign_manager import manager
+    return manager
+
+# 确保 www 目录存在
+os.makedirs(WEB_ROOT, exist_ok=True)
+
+class WebViewerHandler(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        parsed = urlparse(self.path)
+        path = parsed.path
+        query = parse_qs(parsed.query)
+        
+        # 提示词配置 API
+        if path.startswith("/api/prompts/"):
+            self.handle_get_prompt(path)
+        # 设置 API
+        elif path == "/api/settings":
+            self.handle_get_settings()
+        # 消息结果轮询 API
+        elif path == "/api/message-result":
+            self.handle_message_result(query)
+        # momhand API 路由
+        elif path.startswith("/momhand/api/"):
+            self.handle_momhand_api(path, query)
+        # cherry-pick API 路由
+        elif path.startswith("/cherry-pick/api/"):
+            self.handle_cherry_pick_api(path, query)
+        # bydesign API 路由
+        elif path.startswith("/bydesign/api/"):
+            self.handle_bydesign_api(path, query)
+        else:
+            # 静态文件服务
+            self.serve_static_file(path, WEB_ROOT)
+    
+    def handle_momhand_api(self, path, query):
+        """处理 momhand API 请求"""
+        try:
+            manager = get_momhand_manager()  # 每次获取最新数据
+            response = {"success": False, "data": None}
+            
+            if path == "/momhand/api/items":
+                response["data"] = manager.get_all_items()
+                response["success"] = True
+            
+            elif path == "/momhand/api/search":
+                keyword = query.get("q", [""])[0]
+                response["data"] = manager.search_items(keyword)
+                response["success"] = True
+            
+            elif path == "/momhand/api/stats":
+                response["data"] = manager.get_statistics()
+                response["success"] = True
+            
+            elif path.startswith("/momhand/api/items/"):
+                # 获取单个物品
+                item_id = path.split("/")[-1]
+                try:
+                    item_id_int = int(item_id)
+                    for item in manager.items:
+                        if item["id"] == item_id_int:
+                            response["data"] = item
+                            response["success"] = True
+                            break
+                except:
+                    pass
+                response["success"] = bool(response["data"])
+            
+            elif path == "/momhand/api/expiring":
+                days = int(query.get("days", [7])[0])
+                response["data"] = manager.get_expiring_items(days)
+                response["success"] = True
+            
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(json.dumps(response, ensure_ascii=False).encode("utf-8"))
+        
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode("utf-8"))
+    
+    def handle_momhand_post(self, data):
+        """处理 momhand 添加物品请求"""
+        try:
+            manager = get_momhand_manager()
+            
+            item_data = {
+                "name": data.get("name", "未知"),
+                "type": data.get("type", "其他"),
+                "location": data.get("location", ""),
+                "usage": data.get("usage", "")
+            }
+            
+            item = manager.add_item(item_data)
+            
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(json.dumps(item, ensure_ascii=False).encode("utf-8"))
+        
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": str(e)}, ensure_ascii=False).encode("utf-8"))
+    
+    def do_POST(self):
+        """处理 POST 请求"""
+        parsed = urlparse(self.path)
+        path = parsed.path
+        
+        content_length = int(self.headers.get('Content-Length', 0))
+        body = self.rfile.read(content_length).decode('utf-8') if content_length > 0 else '{}'
+        
+        try:
+            data = json.loads(body) if body else {}
+        except:
+            data = {}
+        
+        # 通用消息 API 路由
+        if path == "/api/send-message":
+            self.handle_send_message(data)
+        # momhand API POST 路由
+        elif path == "/momhand/api/items":
+            self.handle_momhand_post(data)
+        # cherry-pick API POST 路由
+        elif path.startswith("/cherry-pick/api/"):
+            self.handle_cherry_pick_post(path, data)
+        # bydesign API POST 路由
+        elif path.startswith("/bydesign/api/"):
+            self.handle_bydesign_post(path, data)
+        else:
+            self.send_response(404)
+            self.end_headers()
+    
+    def do_PUT(self):
+        """处理 PUT 请求"""
+        parsed = urlparse(self.path)
+        path = parsed.path
+        
+        content_length = int(self.headers.get('Content-Length', 0))
+        body = self.rfile.read(content_length).decode('utf-8') if content_length > 0 else '{}'
+        
+        try:
+            data = json.loads(body) if body else {}
+        except:
+            data = {}
+        
+        # cherry-pick API PUT 路由
+        if path.startswith("/cherry-pick/api/items/"):
+            self.handle_cherry_pick_put(path, data)
+        # bydesign API PUT 路由
+        elif path.startswith("/bydesign/api/"):
+            self.handle_bydesign_put(path, data)
+        # 提示词配置 API
+        elif path.startswith("/api/prompts/"):
+            self.handle_save_prompt(path, data)
+        # 设置 API
+        elif path == "/api/settings":
+            self.handle_save_settings(data)
+        else:
+            self.send_response(404)
+            self.end_headers()
+    
+    def do_DELETE(self):
+        """处理 DELETE 请求"""
+        parsed = urlparse(self.path)
+        path = parsed.path
+        
+        # momhand API DELETE 路由
+        if path.startswith("/momhand/api/items/"):
+            self.handle_momhand_delete(path)
+        # cherry-pick API DELETE 路由
+        elif path.startswith("/cherry-pick/api/"):
+            self.handle_cherry_pick_delete(path)
+        # bydesign API DELETE 路由
+        elif path.startswith("/bydesign/api/"):
+            self.handle_bydesign_delete(path)
+        else:
+            self.send_response(404)
+            self.end_headers()
+    
+    def handle_get_prompt(self, path):
+        """获取项目提示词"""
+        try:
+            project = path.split("/")[-1]
+            prompt_file = f"/root/.openclaw/workspace/webviewer/data/prompts/{project}.json"
+            
+            if os.path.exists(prompt_file):
+                with open(prompt_file, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "success": True,
+                    "prompt": config.get('system_prompt', ''),
+                    "name": config.get('name', '')
+                }, ensure_ascii=False).encode("utf-8"))
+            else:
+                self.send_response(404)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": "提示词配置不存在"}, ensure_ascii=False).encode("utf-8"))
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": str(e)}, ensure_ascii=False).encode("utf-8"))
+    
+    def handle_save_prompt(self, path, data):
+        """保存项目提示词"""
+        try:
+            import re
+            project = path.split("/")[-1]
+            # 验证 project 名称，防止路径遍历攻击
+            if not re.match(r'^[a-zA-Z0-9_-]+$', project):
+                raise Exception(f"无效的项目名称：{project}")
+            
+            prompt_file = f"/root/.openclaw/workspace/webviewer/data/prompts/{project}.json"
+            
+            print(f"💾 保存 {project} 提示词到：{prompt_file}")
+            print(f"   数据：{data}")
+            
+            # 读取现有配置
+            config = {'project': project, 'name': project, 'system_prompt': ''}
+            if os.path.exists(prompt_file):
+                with open(prompt_file, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                print(f"   现有配置：{list(config.keys())}")
+            
+            # 更新提示词
+            prompt = data.get('prompt', '')
+            if not prompt:
+                raise Exception("提示词不能为空")
+            
+            config['system_prompt'] = prompt
+            
+            # 保存
+            with open(prompt_file, 'w', encoding='utf-8') as f:
+                json.dump(config, f, ensure_ascii=False, indent=2)
+            
+            print(f"   ✅ 保存成功")
+            
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(json.dumps({"success": True}, ensure_ascii=False).encode("utf-8"))
+        except Exception as e:
+            print(f"   ❌ 保存失败：{e}")
+            import traceback
+            traceback.print_exc()
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": str(e)}, ensure_ascii=False).encode("utf-8"))
+    
+    def handle_process_message(self, data):
+        """处理项目消息"""
+        try:
+            project = data.get('project', '')
+            message = data.get('message', '')
+            prompt = data.get('prompt', '')
+            
+            if not message:
+                raise Exception("消息不能为空")
+            
+            # 格式化提示词
+            full_prompt = prompt.format(message=message)
+            
+            print(f"📤 处理 {project} 消息：{message[:50]}...")
+            
+            # 调用 OpenClaw agent
+            import subprocess
+            cmd = [
+                'openclaw',
+                'agent',
+                '--agent', 'main',
+                '-m', full_prompt
+            ]
+            
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+            
+            # 解析输出
+            output = result.stdout + result.stderr
+            
+            # 提取 JSON
+            import re
+            json_match = re.search(r'\{.*\}', output, re.DOTALL)
+            
+            if json_match:
+                result_data = json.loads(json_match.group(0))
+                
+                # 执行保存操作
+                if result_data.get('success') and result_data.get('data'):
+                    execute_project_save(project, result_data)
+                
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(json.dumps(result_data, ensure_ascii=False).encode("utf-8"))
+            else:
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "success": True,
+                    "message": "已处理",
+                    "data": {}
+                }, ensure_ascii=False).encode("utf-8"))
+        
+        except subprocess.TimeoutExpired:
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": "处理超时"}, ensure_ascii=False).encode("utf-8"))
+        except Exception as e:
+            print(f"❌ 处理失败：{e}")
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": str(e)}, ensure_ascii=False).encode("utf-8"))
+    
+    def handle_get_settings(self):
+        """获取设置"""
+        try:
+            prompt = get_system_prompt()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                "success": True,
+                "system_prompt": prompt
+            }, ensure_ascii=False).encode("utf-8"))
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": str(e)}, ensure_ascii=False).encode("utf-8"))
+    
+    def handle_save_settings(self, data):
+        """保存设置"""
+        try:
+            prompt = data.get('system_prompt', '')
+            if save_system_prompt(prompt):
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": True}, ensure_ascii=False).encode("utf-8"))
+            else:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": "保存失败"}, ensure_ascii=False).encode("utf-8"))
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": str(e)}, ensure_ascii=False).encode("utf-8"))
+    
+    def handle_message_result(self, query):
+        """处理消息结果轮询"""
+        try:
+            msg_id = query.get('msg_id', [None])[0]
+            if not msg_id:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": "缺少 msg_id 参数"}, ensure_ascii=False).encode("utf-8"))
+                return
+            
+            result_file = f"/root/.openclaw/workspace/webviewer/data/results/{msg_id}.json"
+            if os.path.exists(result_file):
+                with open(result_file, 'r', encoding='utf-8') as f:
+                    result = json.load(f)
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": True, "processed": True, "data": result}, ensure_ascii=False).encode("utf-8"))
+            else:
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": True, "processed": False}, ensure_ascii=False).encode("utf-8"))
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": str(e)}, ensure_ascii=False).encode("utf-8"))
+    
+    def handle_cherry_pick_api(self, path, query):
+        """处理 cherry-pick API GET 请求"""
+        try:
+            manager = get_cherry_pick_manager()
+            response = []
+            
+            if path == "/cherry-pick/api/moves":
+                response = manager.get_all_moves()
+            
+            elif path.startswith("/cherry-pick/api/moves/") and path.endswith("/items"):
+                move_id = path.split("/")[4]
+                response = manager.get_items(move_id)
+            
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(json.dumps(response, ensure_ascii=False).encode("utf-8"))
+        
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+    
+    def handle_cherry_pick_post(self, path, data):
+        """处理 cherry-pick API POST 请求"""
+        try:
+            manager = get_cherry_pick_manager()
+            response = {}
+            
+            if path == "/cherry-pick/api/moves":
+                name = data.get("name", "")
+                description = data.get("description", "")
+                if not name:
+                    raise Exception("名称不能为空")
+                response = manager.create_move(name, description)
+            
+            elif "/items" in path and "/moves/" in path:
+                # /cherry-pick/api/moves/{moveId}/items
+                parts = path.split("/")
+                move_id = parts[4]
+                name = data.get("name", "")
+                before_location = data.get("before_location", "")
+                pack_location = data.get("pack_location", "")
+                after_location = data.get("after_location", "")
+                if not name:
+                    raise Exception("物品名称不能为空")
+                response = manager.add_item(move_id, name, before_location, pack_location, after_location)
+            
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(json.dumps(response, ensure_ascii=False).encode("utf-8"))
+        
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+    
+    def handle_cherry_pick_put(self, path, data):
+        """处理 cherry-pick API PUT 请求"""
+        try:
+            manager = get_cherry_pick_manager()
+            parts = path.split("/")
+            item_id = parts[4]  # /cherry-pick/api/items/{itemId}
+            
+            response = manager.update_item(item_id, data)
+            if not response:
+                raise Exception("物品不存在")
+            
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(json.dumps({"success": True}, ensure_ascii=False).encode("utf-8"))
+        
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+    
+    def handle_cherry_pick_delete(self, path):
+        """处理 cherry-pick API DELETE 请求"""
+        try:
+            manager = get_cherry_pick_manager()
+            
+            if "/moves/" in path and "/items/" not in path:
+                # 删除搬家活动
+                parts = path.split("/")
+                move_id = parts[4]
+                manager.delete_move(move_id)
+            elif "/items/" in path:
+                # 删除物品
+                parts = path.split("/")
+                item_id = parts[4]
+                manager.delete_item(item_id)
+            
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(json.dumps({"success": True}, ensure_ascii=False).encode("utf-8"))
+        
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+    
+    def handle_momhand_delete(self, path):
+        """处理 momhand 删除请求"""
+        try:
+            manager = get_momhand_manager()
+            item_id = path.split("/")[-1]
+            
+            try:
+                item_id_int = int(item_id)
+                result = manager.delete_item(item_id_int)
+                
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(json.dumps(result, ensure_ascii=False).encode("utf-8"))
+            except ValueError:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": "无效的 item_id"}, ensure_ascii=False).encode("utf-8"))
+        
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": str(e)}, ensure_ascii=False).encode("utf-8"))
+    
+    # ========== By Design API Handlers ==========
+    def handle_bydesign_api(self, path, query):
+        """处理 bydesign API GET 请求"""
+        try:
+            manager = get_bydesign_manager()
+            response = []
+            
+            if path == "/bydesign/api/checklist":
+                response = manager.get_checklist()
+            
+            elif path == "/bydesign/api/trips":
+                response = manager.get_all_trips()
+            
+            elif path.startswith("/bydesign/api/trips/") and "/progress" not in path:
+                trip_id = path.split("/")[4]
+                trip = manager.get_trip(trip_id)
+                response = trip if trip else {}
+            
+            elif "/progress" in path:
+                trip_id = path.split("/")[4]
+                response = manager.get_trip_progress(trip_id)
+            
+            elif path == "/bydesign/api/templates":
+                response = manager.get_templates()
+            
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(json.dumps(response, ensure_ascii=False).encode("utf-8"))
+        
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+    
+    def handle_bydesign_post(self, path, data):
+        """处理 bydesign API POST 请求"""
+        try:
+            manager = get_bydesign_manager()
+            response = {}
+            
+            if path == "/bydesign/api/checklist":
+                text = data.get("text", "")
+                if not text:
+                    raise Exception("检查项不能为空")
+                response = manager.add_checklist_item(text)
+            
+            elif path == "/bydesign/api/trips":
+                name = data.get("name", "")
+                description = data.get("description", "")
+                if not name:
+                    raise Exception("出行名称不能为空")
+                response = manager.create_trip(name, description)
+            
+            elif "/items" in path and "/trips/" in path:
+                # /bydesign/api/trips/{tripId}/items
+                parts = path.split("/")
+                trip_id = parts[4]
+                text = data.get("text", "")
+                if not text:
+                    raise Exception("物品名称不能为空")
+                response = manager.add_custom_item(trip_id, text)
+            
+            elif "/complete" in path:
+                trip_id = path.split("/")[4]
+                response = manager.complete_trip(trip_id)
+            
+            elif path == "/bydesign/api/templates":
+                # 创建模板
+                name = data.get("name", "")
+                items = data.get("items", [])
+                if not name:
+                    raise Exception("模板名称不能为空")
+                response = manager.create_template(name, items)
+            
+            elif "/templates" in path and "/trips/" in path:
+                # /bydesign/api/trips/{tripId}/templates - 导入模板到出行
+                parts = path.split("/")
+                trip_id = parts[4]
+                template_id = data.get("template_id", "")
+                if not template_id:
+                    raise Exception("模板 ID 不能为空")
+                response = manager.import_template_to_trip(trip_id, template_id)
+            
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(json.dumps(response, ensure_ascii=False).encode("utf-8"))
+        
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+    
+    def handle_bydesign_put(self, path, data):
+        """处理 bydesign API PUT 请求"""
+        try:
+            manager = get_bydesign_manager()
+            parts = path.split("/")
+            
+            if "/checklist/" in path and "/trips/" not in path:
+                # 通用检查清单更新
+                item_id = parts[4]
+                response = manager.update_checklist_item(item_id, data)
+            
+            elif "/trips/" in path and "/checklist/" in path:
+                # 出行中的通用检查清单快照更新
+                trip_id = parts[4]
+                item_id = parts[6]
+                trip = manager.get_trip(trip_id)
+                if trip and trip.get("checklist_snapshot"):
+                    for item in trip["checklist_snapshot"]:
+                        if item["id"] == item_id:
+                            item.update(data)
+                            manager._save_trips()
+                            response = item
+                            break
+            
+            elif "/trips/" in path and "/items/" in path:
+                # 出行中的自定义检查项更新
+                trip_id = parts[4]
+                item_id = parts[6]
+                trip = manager.get_trip(trip_id)
+                if trip and trip.get("custom_items"):
+                    for item in trip["custom_items"]:
+                        if item["id"] == item_id:
+                            item.update(data)
+                            manager._save_trips()
+                            response = item
+                            break
+            
+            if not response:
+                raise Exception("项目不存在")
+            
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(json.dumps({"success": True}, ensure_ascii=False).encode("utf-8"))
+        
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+    
+    def handle_bydesign_delete(self, path):
+        """处理 bydesign API DELETE 请求"""
+        try:
+            manager = get_bydesign_manager()
+            
+            if "/checklist/" in path:
+                item_id = path.split("/")[4]
+                manager.delete_checklist_item(item_id)
+            elif "/trips/" in path and "/items/" not in path:
+                trip_id = path.split("/")[4]
+                manager.delete_trip(trip_id)
+            elif "/templates/" in path:
+                template_id = path.split("/")[4]
+                manager.delete_template(template_id)
+            elif "/trips/" in path and "/items/" in path:
+                parts = path.split("/")
+                trip_id = parts[4]
+                item_id = parts[6]
+                trip = manager.get_trip(trip_id)
+                if trip:
+                    trip["custom_items"] = [i for i in trip["custom_items"] if i["id"] != item_id]
+                    manager._save_trips()
+            
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(json.dumps({"success": True}, ensure_ascii=False).encode("utf-8"))
+        
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+    
+    def serve_static_file(self, path, root):
+        """服务静态文件"""
+        if path == "/":
+            path = "/index.html"  # 默认首页 - Dummy的小弟
+        
+        file_path = os.path.join(root, path.lstrip("/"))
+        
+        if os.path.isdir(file_path):
+            file_path = os.path.join(file_path, "index.html")
+        
+        if os.path.exists(file_path):
+            try:
+                with open(file_path, "rb") as f:
+                    content = f.read()
+                
+                self.send_response(200)
+                if file_path.endswith(".html"):
+                    self.send_header("Content-Type", "text/html; charset=utf-8")
+                elif file_path.endswith(".css"):
+                    self.send_header("Content-Type", "text/css")
+                elif file_path.endswith(".js"):
+                    self.send_header("Content-Type", "application/javascript")
+                elif file_path.endswith(".json"):
+                    self.send_header("Content-Type", "application/json")
+                elif file_path.endswith(".png"):
+                    self.send_header("Content-Type", "image/png")
+                elif file_path.endswith(".jpg") or file_path.endswith(".jpeg"):
+                    self.send_header("Content-Type", "image/jpeg")
+                else:
+                    self.send_header("Content-Type", "text/plain")
+                
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(content)
+            except Exception as e:
+                self.send_error(500, str(e))
+        else:
+            self.send_error(404, "File not found")
+    
+    def log_message(self, format, *args):
+        print(f"[WebViewer] {self.log_date_time_string()} - {self.address_string()} - {format%args}")
+    
+    def handle_send_message(self, data):
+        """处理发送消息 - 异步处理，立即返回"""
+        try:
+            message = data.get('message', '')
+            timestamp = data.get('timestamp', '')
+            
+            if not message:
+                raise Exception('消息内容不能为空')
+            
+            # 生成消息 ID
+            msg_id = str(uuid.uuid4())
+            
+            # 立即返回响应（不等待 AI 处理）
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            
+            immediate_response = {
+                "success": True,
+                "message": "⏳ 正在处理中，请稍候刷新页面查看结果...",
+                "msg_id": msg_id,
+                "processed_by": "async",
+                "processing": True  # 标记为处理中
+            }
+            self.wfile.write(json.dumps(immediate_response, ensure_ascii=False).encode("utf-8"))
+            
+            # 后台异步处理（使用线程）
+            import threading
+            thread = threading.Thread(
+                target=self._process_message_async,
+                args=(msg_id, message),
+                daemon=True
+            )
+            thread.start()
+            print(f"📤 消息已提交后台处理：{msg_id}")
+        
+        except Exception as e:
+            print(f"✗ 提交消息失败：{e}")
+            import traceback
+            traceback.print_exc()
+            
+            msg_id = str(uuid.uuid4())
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                "success": False,
+                "error": str(e),
+                "msg_id": msg_id
+            }, ensure_ascii=False).encode("utf-8"))
+    
+    def _process_message_async(self, msg_id: str, message: str):
+        """
+        后台异步处理消息（在线程中运行）
+        """
+        try:
+            print(f"🔄 开始后台处理消息：{msg_id}")
+            
+            # 使用 OpenClaw Agent 处理器
+            import sys
+            sys.path.insert(0, "/root/.openclaw/workspace/webviewer")
+            from openclaw_agent_processor import process_via_openclaw_agent
+            
+            print(f"📤 发送消息到 OpenClaw Agent: {message[:50]}...")
+            
+            # 处理消息（可能耗时较长）
+            result = process_via_openclaw_agent(message)
+            
+            # 保存结果
+            result_dir = "/root/.openclaw/workspace/webviewer/data/results"
+            os.makedirs(result_dir, exist_ok=True)
+            
+            result_data = {
+                "msg_id": msg_id,
+                "original_message": message,
+                "processed_by": "openclaw",
+                "timestamp": int(time.time()),
+                "processing": False,  # 标记为处理完成
+                **result
+            }
+            
+            result_file = os.path.join(result_dir, f"{msg_id}.json")
+            with open(result_file, 'w', encoding='utf-8') as f:
+                json.dump(result_data, f, ensure_ascii=False, indent=2)
+            
+            print(f"✅ OpenClaw 处理完成：{msg_id} -> {result.get('project', 'unknown')}")
+            
+            # 如果 OpenClaw 返回了 project 和 data，执行保存操作
+            if result.get('project') and result.get('data'):
+                print(f"📝 执行保存操作：project={result['project']}, action={result.get('action')}")
+                execute_save_action(result)
+            
+        except Exception as e:
+            print(f"❌ 后台处理失败 {msg_id}: {e}")
+            import traceback
+            traceback.print_exc()
+            
+            # 保存错误结果
+            result_dir = "/root/.openclaw/workspace/webviewer/data/results"
+            os.makedirs(result_dir, exist_ok=True)
+            
+            result_data = {
+                "msg_id": msg_id,
+                "original_message": message,
+                "success": False,
+                "error": str(e),
+                "timestamp": int(time.time()),
+                "processing": False
+            }
+            
+            result_file = os.path.join(result_dir, f"{msg_id}.json")
+            with open(result_file, 'w', encoding='utf-8') as f:
+                json.dump(result_data, f, ensure_ascii=False, indent=2)
+
+class ReuseAddrServer(socketserver.TCPServer):
+    allow_reuse_address = True
+
+if __name__ == "__main__":
+    httpd = ReuseAddrServer(("", PORT), WebViewerHandler)
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    context.load_cert_chain(certfile=CERT_FILE, keyfile=KEY_FILE)
+    httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
+    print(f"🔒 WebViewer HTTPS 服务已启动：https://0.0.0.0:{PORT}")
+    print(f"📂 网站根目录：{WEB_ROOT}")
+    print(f"🏠 首页：https://<IP>/")
+    print(f"📦 momhand API: https://<IP>/momhand/api/items")
+    print(f"📦 momhand Web: https://<IP>/momhand/")
+    print(f"🏠 cherry-pick API: https://<IP>/cherry-pick/api/moves")
+    print(f"🏠 cherry-pick Web: https://<IP>/cherry-pick/")
+    print(f"✈️ bydesign API: https://<IP>/bydesign/api/checklist")
+    print(f"✈️ bydesign Web: https://<IP>/bydesign/")
+    httpd.serve_forever()

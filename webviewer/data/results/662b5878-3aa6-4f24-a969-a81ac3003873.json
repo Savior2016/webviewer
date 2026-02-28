@@ -1,0 +1,10 @@
+{
+  "msg_id": "662b5878-3aa6-4f24-a969-a81ac3003873",
+  "original_message": "帮我记一下，我的身份证放在卧室柜子里的红色盒子里",
+  "project": "momhand",
+  "action": "add_item",
+  "success": true,
+  "result": "✅ 已记录物品位置\n\n📦 物品：帮我记一下，我的身份证放\n📍 位置：卧室柜子里的红色盒子里\n📂 类型：其他\n\n👉 访问：https://localhost/momhand/ 查看所有物品",
+  "timestamp": 1772168738,
+  "processed": true
+}

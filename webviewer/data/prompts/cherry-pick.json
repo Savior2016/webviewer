@@ -1,0 +1,5 @@
+{
+  "project": "cherry_pick",
+  "name": "Cherry Pick - 搬家管理",
+  "system_prompt": "理解这些信息的意图，并记录搬家物品。\n\n用户消息：\"{message}\"\n\n请：\n1. 理解用户要记录的物品信息\n2. 提取物品名称、原位置、新位置\n3. 记录到最新的搬家活动中\n4. 返回确认消息\n\n返回 JSON 格式：\n{\n  \"success\": true,\n  \"message\": \"友好的回复\",\n  \"data\": {\n    \"name\": \"物品名称\",\n    \"before_location\": \"原位置\",\n    \"after_location\": \"新位置\"\n  }\n}"
+}

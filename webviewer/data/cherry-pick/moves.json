@@ -1,0 +1,24 @@
+{
+  "moves": [
+    {
+      "id": "265831af-f681-4454-8582-0cf1dd51f122",
+      "name": "3月搬家",
+      "description": "",
+      "created_at": 1772202904,
+      "status": "active"
+    }
+  ],
+  "items": [
+    {
+      "id": "f9bc7723-cdea-4f8c-b8e7-b8eb240abe34",
+      "move_id": "265831af-f681-4454-8582-0cf1dd51f122",
+      "name": "备用手机",
+      "before_location": "衣柜",
+      "pack_location": "1号箱子",
+      "after_location": "一号箱",
+      "synced_to_momhand": true,
+      "created_at": 1772205172,
+      "updated_at": 1772238910
+    }
+  ]
+}

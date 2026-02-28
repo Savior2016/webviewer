@@ -1,0 +1,17 @@
+{
+  "msg_id": "be2426fa-2c7e-46d7-a9cb-d79062fb31f3",
+  "original_message": "帮我记住我的钥匙放在了门口",
+  "processed_by": "local_fallback",
+  "timestamp": 1772173442,
+  "success": true,
+  "project": "momhand",
+  "action": "add_item",
+  "message": "✅ 已记录物品位置\n\n📦 物品：钥匙\n📍 位置：门口\n📂 类型：其他\n\n👉 访问：https://localhost/momhand/ 查看所有物品",
+  "refresh": "/momhand/",
+  "data": {
+    "item_name": "钥匙",
+    "location": "门口",
+    "original_message": "帮我记住我的钥匙放在了门口"
+  },
+  "note": "OpenClaw 调用失败，使用本地引擎处理"
+}

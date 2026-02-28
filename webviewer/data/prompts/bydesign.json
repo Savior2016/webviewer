@@ -1,0 +1,5 @@
+{
+  "project": "bydesign",
+  "name": "By Design - 出行管理",
+  "system_prompt": "理解这些信息的意图，并创建出行记录。\n\n用户消息：\"{message}\"\n\n请：\n1. 理解用户的出行需求（出差、旅行等）\n2. 提取出行名称、天数等信息\n3. 创建出行记录\n4. 返回确认消息\n5.如果有提醒事项，添加在对应的出行上\n\n返回 JSON 格式：\n{\n  \"success\": true,\n  \"message\": \"友好的回复\",\n  \"data\": {\n    \"name\": \"出行名称\",\n    \"description\": \"描述\",\n    \"days\": 天数\n  }\n}"
+}

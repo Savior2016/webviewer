@@ -1,0 +1,15 @@
+{
+  "msg_id": "3578ea84-ec9b-4659-986e-220b7bac2088",
+  "original_message": "我要出差 3 天",
+  "processed_by": "openclaw_agent",
+  "timestamp": 1772182935,
+  "success": true,
+  "project": "bydesign",
+  "action": "trip_record",
+  "message": "好的，已记录你的出差安排！📋 出差3天，需要我帮你准备行程清单、设置提醒或管理相关事项吗？",
+  "refresh": "/bydesign/",
+  "data": {
+    "trip_duration": 3,
+    "trip_type": "出差"
+  }
+}

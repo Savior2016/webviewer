@@ -1,0 +1,17 @@
+{
+  "msg_id": "29d98ab5-7b67-4f4b-a9d6-f772feccfcee",
+  "original_message": "我的身份证在哪里",
+  "processed_by": "openclaw_agent",
+  "timestamp": 1772191282,
+  "success": true,
+  "project": "momhand",
+  "action": "search_item",
+  "message": "找到了！📍 身份证 放在 主卧衣柜红色盒子里。",
+  "refresh": "/momhand/",
+  "data": {
+    "name": "身份证",
+    "type": "证件",
+    "location": "主卧衣柜红色盒子",
+    "usage": "重要证件"
+  }
+}

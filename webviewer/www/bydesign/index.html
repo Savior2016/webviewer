@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>已读不回 - By Design</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/transitions.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] }
+        }
+      }
+    }
+  </script>
+  <style>
+    * { font-family: 'Inter', system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
+    .gradient-bg { background: linear-gradient(135deg, #1e3a5f 0%, #0f4c75 50%, #1b5e8b 100%); }
+    .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.2); }
+    .floating { animation: floating 3s ease-in-out infinite; }
+    @keyframes floating { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-10px); } }
+    .slide-in { animation: slideIn 0.4s ease-out; }
+    @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .expand-in { animation: expandIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
+    @keyframes expandIn { 0% { transform: scale(0.9) translateY(20px); opacity: 0; } 100% { transform: scale(1) translateY(0); opacity: 1; } }
+    .fab-button { position: fixed; bottom: 24px; right: 24px; z-index: 100; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .fab-button:hover { transform: scale(1.1); }
+    .fab-panel { position: fixed; bottom: 100px; right: 24px; z-index: 99; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    @media (max-width: 640px) {
+      .fab-button { bottom: 16px; right: 16px; }
+      .fab-panel { bottom: 90px; right: 16px; left: 16px; }
+      h1 { font-size: 28px !important; }
+    }
+    .checklist-item { transition: all 0.2s ease; }
+    .checklist-item:hover { background: rgba(59, 130, 246, 0.05); }
+    .checklist-item.completed { opacity: 0.6; }
+    .checklist-item.completed .item-text { text-decoration: line-through; color: #9ca3af; }
+    .modal { animation: modalIn 0.3s ease-out; }
+    @keyframes modalIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+    .section-separator {
+      border-top: 2px dashed rgba(209, 213, 219, 0.5);
+      margin: 1rem 0;
+      position: relative;
+    }
+    .section-separator::after {
+      content: '通用检查清单';
+      position: absolute;
+      left: 50%;
+      top: -10px;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, #1e3a5f 0%, #0f4c75 50%, #1b5e8b 100%);
+      padding: 0 1rem;
+      border-radius: 1rem;
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.7);
+    }
+  </style>
+</head>
+<body class="gradient-bg min-h-screen pb-40 sm:pb-32">
+  <div class="fixed inset-0 overflow-hidden pointer-events-none">
+    <div class="absolute top-1/4 left-1/4 w-72 h-72 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 floating"></div>
+    <div class="absolute bottom-1/4 right-1/4 w-72 h-72 bg-cyan-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 floating" style="animation-delay: -1.5s;"></div>
+  </div>
+
+  <div class="relative max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+    <!-- Header -->
+    <header class="text-center mb-8">
+      <div class="inline-block mb-4"><div class="text-5xl sm:text-6xl floating">✈️</div></div>
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-white mb-2">已读不回</h1>
+      <p class="text-blue-100 text-base sm:text-lg font-light mb-3">By Design</p>
+      <div class="w-16 h-1 bg-gradient-to-r from-blue-400 to-cyan-400 mx-auto rounded-full"></div>
+      <p class="text-blue-200/70 text-xs sm:text-sm mt-3">出远门前读了这个，就不需要单独返回</p>
+      <a href="/" class="inline-flex items-center gap-2 text-blue-200 hover:text-white transition-colors mt-4 text-sm"><span>←</span> 返回首页</a>
+    </header>
+
+    <!-- 左侧：通用检查清单 -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6">
+      <!-- 通用检查清单 -->
+      <div class="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-6">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-xl">📋</div>
+            <div>
+              <h2 class="text-lg sm:text-xl font-bold text-gray-800">通用检查清单</h2>
+              <p class="text-xs text-gray-500" id="checklistCount">0 项 · 每次出行都会同步</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="flex gap-2 mb-3">
+          <input type="text" id="checklistInput" placeholder="添加通用检查项..." 
+            class="flex-1 px-3 py-2 rounded-lg border-2 border-gray-200 focus:border-indigo-500 outline-none text-sm">
+          <button onclick="addChecklistItem()" class="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg hover:shadow-lg transition-all text-sm font-medium">添加</button>
+        </div>
+        
+        <div id="checklistItems" class="space-y-2 max-h-64 overflow-y-auto"></div>
+      </div>
+
+      <!-- 模板清单 -->
+      <div class="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-6">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center text-xl">📝</div>
+            <div>
+              <h2 class="text-lg sm:text-xl font-bold text-gray-800">模板清单</h2>
+              <p class="text-xs text-gray-500" id="templateCount">0 个 · 可批量导入到出行</p>
+            </div>
+          </div>
+          <button onclick="showTemplatesModal()" class="text-xs px-3 py-1.5 bg-pink-100 text-pink-600 rounded-lg hover:bg-pink-200 transition-all font-medium">管理</button>
+        </div>
+        
+        <div id="templatesPreview" class="space-y-2 max-h-64 overflow-y-auto">
+          <!-- 模板预览 -->
+        </div>
+      </div>
+    </div>
+
+    <!-- 出行记录 -->
+    <div class="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-6 mb-20">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center text-xl">📝</div>
+          <div>
+            <h2 class="text-lg sm:text-xl font-bold text-gray-800">出行记录</h2>
+            <p class="text-xs text-gray-500">创建新的出行计划</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="flex gap-3 mb-4">
+        <input type="text" id="tripNameInput" placeholder="出行名称（如：北京出差）" 
+          class="flex-1 px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-gray-700 text-sm sm:text-base">
+        <button onclick="createTrip()" class="bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-5 py-3 rounded-xl font-semibold hover:shadow-lg transition-all whitespace-nowrap">创建</button>
+      </div>
+      
+      <div id="tripsList" class="space-y-3"></div>
+    </div>
+  </div>
+
+  <!-- 悬浮按钮 -->
+  <button onclick="togglePanel()" class="fab-button bg-gradient-to-r from-blue-500 to-cyan-500 text-white w-14 h-14 rounded-full shadow-2xl flex items-center justify-center text-2xl hover:shadow-blue-500/50">
+    <span id="fabIcon">💬</span>
+  </button>
+
+  <!-- 展开面板 -->
+  <div id="fabPanel" class="fab-panel hidden">
+    <div class="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl expand-in max-w-md w-full">
+      <div class="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-xl">💬</div>
+          <div>
+            <h3 class="text-base font-bold text-gray-800">快速添加</h3>
+            <p class="text-xs text-gray-500">通过对话添加出行</p>
+          </div>
+        </div>
+        <button onclick="showSettings()" class="text-gray-400 hover:text-blue-500 transition-colors p-2" title="提示词设置">⚙️</button>
+      </div>
+      
+      <div class="mb-4">
+        <textarea id="messageInput" placeholder="描述要添加的内容，例如：&#10;• 我要出差 3 天&#10;• 帮我记录出行：北京 5 天" rows="3" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-gray-700 text-sm resize-none"></textarea>
+      </div>
+      
+      <button onclick="sendMessage()" class="w-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2">
+        <span>📤</span>
+        <span>发送</span>
+      </button>
+      
+      <div class="mt-4 pt-4 border-t border-gray-100">
+        <p class="text-xs text-gray-400 mb-2">试试这样说：</p>
+        <div class="flex flex-wrap gap-2">
+          <button onclick="fillExample('我要出差 3 天')" class="text-xs px-3 py-1.5 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-all">✈️ 出差 3 天</button>
+          <button onclick="fillExample('帮我记录出行：北京 5 天')" class="text-xs px-3 py-1.5 bg-cyan-50 text-cyan-600 rounded-full hover:bg-cyan-100 transition-all">📝 北京 5 天</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 结果展示 -->
+  <div id="resultArea" class="fixed top-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-96 z-[150] hidden">
+    <div id="resultContent" class="expand-in"></div>
+  </div>
+
+  <!-- 出行详情弹窗 -->
+  <div id="tripDetailModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="glass-card rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden modal">
+      <div class="bg-gradient-to-r from-blue-500 to-cyan-500 px-6 py-4 flex items-center justify-between">
+        <h2 class="text-xl font-bold text-white" id="detailTripName">出行详情</h2>
+        <button onclick="closeTripDetail()" class="text-white hover:text-blue-200 transition-colors text-2xl">✕</button>
+      </div>
+      <div class="p-6 overflow-y-auto max-h-[70vh]">
+        <!-- 通用检查清单快照 -->
+        <div class="mb-6">
+          <div class="flex items-center gap-2 mb-3">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-lg">📋</div>
+            <div>
+              <h3 class="text-sm font-semibold text-gray-800">通用检查清单</h3>
+              <p class="text-xs text-gray-500">创建出行时同步的固定检查项</p>
+            </div>
+          </div>
+          <div id="detailChecklist" class="space-y-2 pl-10"></div>
+        </div>
+
+        <div class="section-separator"></div>
+
+        <!-- 本次出行检查项 -->
+        <div class="mt-6">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center text-lg">✨</div>
+              <div>
+                <h3 class="text-sm font-semibold text-gray-800">本次出行检查项</h3>
+                <p class="text-xs text-gray-500">自定义添加或从模板导入</p>
+              </div>
+            </div>
+            <button onclick="showImportTemplate()" class="text-xs px-3 py-1.5 bg-pink-100 text-pink-600 rounded-lg hover:bg-pink-200 transition-all font-medium flex items-center gap-1">
+              <span>📥</span> 导入模板
+            </button>
+          </div>
+          <div class="flex gap-2 mb-3 pl-10">
+            <input type="text" id="customItemInput" placeholder="添加自定义检查项..." class="flex-1 px-3 py-2 rounded-lg border border-gray-200 focus:border-pink-500 outline-none text-sm">
+            <button onclick="addCustomItem()" class="px-4 py-2 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-lg hover:shadow-lg transition-all text-sm font-medium">添加</button>
+          </div>
+          <div id="detailCustomItems" class="space-y-2 pl-10"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模板管理弹窗 -->
+  <div id="templatesModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="glass-card rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden modal">
+      <div class="bg-gradient-to-r from-pink-500 to-rose-500 px-6 py-4 flex items-center justify-between">
+        <h2 class="text-xl font-bold text-white">📝 模板清单管理</h2>
+        <button onclick="closeTemplatesModal()" class="text-white hover:text-pink-200 transition-colors text-2xl">✕</button>
+      </div>
+      <div class="p-6 overflow-y-auto max-h-[70vh]">
+        <div class="bg-pink-50 border border-pink-200 rounded-xl p-4 mb-6">
+          <h4 class="text-sm font-semibold text-pink-800 mb-2">💡 模板说明</h4>
+          <ul class="text-xs text-pink-700 space-y-1">
+            <li>• 模板是预先配置的检查清单，可重复使用</li>
+            <li>• 在出行详情中可以批量导入模板</li>
+            <li>• 重复的检查项会自动过滤</li>
+          </ul>
+        </div>
+
+        <div class="mb-6">
+          <h3 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+            <span>➕</span> 创建新模板
+          </h3>
+          <div class="space-y-3">
+            <input type="text" id="templateName" placeholder="模板名称（如：出差检查单）" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-pink-500 outline-none text-sm">
+            <textarea id="templateItems" placeholder="检查项列表，每行一项（重复项会自动过滤）&#10;例如：&#10;带身份证&#10;带充电宝&#10;关门窗" rows="4" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-pink-500 outline-none text-sm"></textarea>
+            <button onclick="createTemplate()" class="w-full bg-gradient-to-r from-pink-500 to-rose-500 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition-all">创建模板</button>
+          </div>
+        </div>
+        <div>
+          <h3 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+            <span>📚</span> 已有模板
+            <span id="templatesTotal" class="text-xs px-2 py-0.5 bg-pink-100 text-pink-600 rounded-full">0 个</span>
+          </h3>
+          <div id="templatesList" class="space-y-2"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 提示词设置弹窗 -->
+  <div id="settingsModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[200] hidden flex items-center justify-center p-4">
+    <div class="glass-card rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden modal">
+      <div class="bg-gradient-to-r from-purple-500 to-pink-500 px-6 py-4 flex items-center justify-between">
+        <h2 class="text-xl font-bold text-white">⚙️ 提示词设置</h2>
+        <button onclick="hideSettings()" class="text-white hover:text-purple-200 transition-colors text-2xl">✕</button>
+      </div>
+      <div class="p-6 overflow-y-auto max-h-[70vh]">
+        <div class="bg-purple-50 border border-purple-200 rounded-xl p-4 mb-4">
+          <h4 class="text-sm font-semibold text-purple-800 mb-2">💡 提示词说明</h4>
+          <ul class="text-xs text-purple-700 space-y-1">
+            <li>• 提示词会附加在用户消息前面</li>
+            <li>• 告诉 AI 如何理解意图</li>
+            <li>• 指定返回的 JSON 格式</li>
+            <li>• 修改后点击"保存"生效</li>
+          </ul>
+        </div>
+        
+        <div class="mb-4">
+          <label class="block text-sm font-semibold text-gray-700 mb-2">
+            📝 系统提示词
+          </label>
+          <textarea id="systemPrompt" rows="12" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-500 outline-none text-sm font-mono"></textarea>
+        </div>
+        
+        <div class="flex justify-between items-center">
+          <button onclick="resetPrompt()" class="text-gray-600 hover:text-gray-800 text-sm font-medium">
+            🔄 恢复默认
+          </button>
+          <div class="flex gap-3">
+            <button onclick="hideSettings()" class="px-5 py-2.5 rounded-xl border-2 border-gray-200 text-gray-700 font-medium hover:bg-gray-100 transition-all">
+              取消
+            </button>
+            <button onclick="saveSettings()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium hover:shadow-lg transition-all">
+              💾 保存设置
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 导入模板弹窗 -->
+  <div id="importTemplateModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="glass-card rounded-3xl shadow-2xl max-w-md w-full modal">
+      <div class="bg-gradient-to-r from-green-500 to-emerald-500 px-6 py-4 flex items-center justify-between">
+        <h2 class="text-xl font-bold text-white">📥 导入模板</h2>
+        <button onclick="closeImportTemplate()" class="text-white hover:text-green-200 transition-colors text-2xl">✕</button>
+      </div>
+      <div class="p-6">
+        <div class="bg-green-50 border border-green-200 rounded-xl p-3 mb-4">
+          <p class="text-xs text-green-700">💡 提示：重复的检查项会自动过滤，不会重复添加</p>
+        </div>
+        <p class="text-sm text-gray-600 mb-4">选择要导入的模板：</p>
+        <div id="importTemplatesList" class="space-y-2 mb-4"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let panelOpen = false;
+    let currentTripId = null;
+
+    function togglePanel() {
+      panelOpen = !panelOpen;
+      const panel = document.getElementById('fabPanel');
+      const icon = document.getElementById('fabIcon');
+      if (panelOpen) {
+        panel.classList.remove('hidden');
+        icon.textContent = '✕';
+      } else {
+        panel.classList.add('hidden');
+        icon.textContent = '💬';
+      }
+    }
+
+    function fillExample(text) {
+      document.getElementById('messageInput').value = text;
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById('messageInput');
+      const message = input.value.trim();
+      if (!message) { showResult('⚠️ 请输入内容', 'warning'); return; }
+
+      showResult('⏳ 已提交，正在后台处理...', 'info');
+      input.value = '';
+      togglePanel();
+
+      try {
+        const response = await fetch('/api/send-message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: message, timestamp: Date.now() })
+        });
+        const result = await response.json();
+
+        if (result.success) {
+          const msgId = result.msg_id;
+          if (result.processing) {
+            showResult('⏳ 后台处理中，请稍候...', 'info');
+            pollResult(msgId);
+          } else {
+            showResult(`${result.message}`, 'success');
+            if (result.refresh) {
+              setTimeout(() => { window.location.href = result.refresh + '?t=' + Date.now(); }, 3000);
+            } else {
+              loadTrips();
+              loadChecklist();
+              loadTemplatesPreview();
+            }
+          }
+        } else {
+          showResult(`${result.error || '处理失败'}`, 'error');
+        }
+      } catch (error) {
+        showResult(`发送失败：${error.message}`, 'error');
+      }
+    }
+
+    function pollResult(msgId) {
+      let attempts = 0;
+      const maxAttempts = 60;
+      const pollTimer = setInterval(async () => {
+        attempts++;
+        try {
+          const response = await fetch(`/api/message-result?msg_id=${msgId}`);
+          const result = await response.json();
+          if (result.processed || !result.success) {
+            clearInterval(pollTimer);
+            if (result.data && result.data.success !== false) {
+              showResult(`${result.data.message || '处理完成'}`, 'success');
+              if (result.data.refresh) {
+                setTimeout(() => { window.location.href = result.data.refresh + '?t=' + Date.now(); }, 2000);
+              } else {
+                loadTrips();
+                loadChecklist();
+                loadTemplatesPreview();
+              }
+            } else {
+              showResult(`${result.data?.error || result.data?.message || '处理失败'}`, 'error');
+            }
+          } else if (attempts >= maxAttempts) {
+            clearInterval(pollTimer);
+            showResult('处理超时，请刷新页面查看结果', 'warning');
+          }
+        } catch (error) {
+          console.error('轮询失败:', error);
+        }
+      }, 500);
+    }
+
+    function showResult(text, type) {
+      const area = document.getElementById('resultArea');
+      const content = document.getElementById('resultContent');
+      const colors = {
+        'success': 'bg-green-50 border-green-200 text-green-700',
+        'error': 'bg-red-50 border-red-200 text-red-700',
+        'warning': 'bg-amber-50 border-amber-200 text-amber-700',
+        'info': 'bg-blue-50 border-blue-200 text-blue-700'
+      };
+      content.className = `${colors[type]} border px-5 py-4 rounded-2xl shadow-lg expand-in`;
+      content.innerHTML = `<div><span class="font-medium text-sm">${text}</span></div>`;
+      area.classList.remove('hidden');
+      setTimeout(() => area.classList.add('hidden'), 5000);
+    }
+
+    async function loadChecklist() {
+      try {
+        const res = await fetch('/bydesign/api/checklist');
+        const items = await res.json();
+        document.getElementById('checklistCount').textContent = `${items.length} 项 · 每次出行都会同步`;
+        
+        const container = document.getElementById('checklistItems');
+        if (items.length === 0) {
+          container.innerHTML = '<div class="text-center py-8 text-gray-400 text-sm">暂无检查项，添加一些吧~</div>';
+          return;
+        }
+        
+        container.innerHTML = items.map(item => `
+          <div class="checklist-item flex items-center gap-3 p-3 rounded-xl cursor-pointer ${item.completed ? 'completed' : ''}" onclick="toggleChecklistItem('${item.id}', ${!item.completed})">
+            <div class="w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${item.completed ? 'bg-blue-500 border-blue-500' : 'border-gray-300'}">
+              ${item.completed ? '<span class="text-white text-xs">✓</span>' : ''}
+            </div>
+            <span class="item-text flex-1 text-gray-700 text-sm">${escapeHtml(item.text)}</span>
+            <button onclick="event.stopPropagation(); deleteChecklistItem('${item.id}')" class="text-gray-300 hover:text-red-500 transition-colors text-sm">🗑️</button>
+          </div>
+        `).join('');
+      } catch (error) {
+        console.error('加载检查清单失败:', error);
+      }
+    }
+
+    async function toggleChecklistItem(itemId, completed) {
+      try {
+        await fetch(`/bydesign/api/checklist/${itemId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ completed })
+        });
+        loadChecklist();
+      } catch (error) {
+        console.error('更新失败:', error);
+      }
+    }
+
+    async function deleteChecklistItem(itemId) {
+      if (!confirm('确定删除此项？')) return;
+      try {
+        await fetch(`/bydesign/api/checklist/${itemId}`, { method: 'DELETE' });
+        loadChecklist();
+      } catch (error) {
+        console.error('删除失败:', error);
+      }
+    }
+
+    async function addChecklistItem() {
+      const input = document.getElementById('checklistInput');
+      const text = input.value.trim();
+      if (!text) return;
+      
+      try {
+        const response = await fetch('/bydesign/api/checklist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text })
+        });
+        const result = await response.json();
+        
+        if (result && result.id) {
+          input.value = '';
+          loadChecklist();
+          showResult('添加成功', 'success');
+        } else {
+          showResult('该项已存在，无需重复添加', 'warning');
+        }
+      } catch (error) {
+        console.error('添加失败:', error);
+        showResult('添加失败', 'error');
+      }
+    }
+
+    async function loadTemplatesPreview() {
+      try {
+        const res = await fetch('/bydesign/api/templates');
+        const templates = await res.json();
+        document.getElementById('templateCount').textContent = `${templates.length} 个 · 可批量导入到出行`;
+        
+        const container = document.getElementById('templatesPreview');
+        if (templates.length === 0) {
+          container.innerHTML = '<div class="text-center py-8 text-gray-400 text-sm">暂无模板<br><button onclick="showTemplatesModal()" class="mt-2 text-pink-500 hover:text-pink-600 font-medium">创建第一个模板</button></div>';
+          return;
+        }
+        
+        container.innerHTML = templates.slice(0, 5).map(t => `
+          <div class="p-3 bg-gradient-to-r from-pink-50 to-rose-50 rounded-xl cursor-pointer hover:shadow-md transition-all" onclick="showTemplatesModal()">
+            <div class="flex justify-between items-start">
+              <div class="flex-1">
+                <h4 class="font-semibold text-gray-800 text-sm">${escapeHtml(t.name)}</h4>
+                <p class="text-xs text-gray-500 mt-1">${t.items ? t.items.length : 0} 项检查</p>
+              </div>
+              <span class="text-lg">📝</span>
+            </div>
+          </div>
+        `).join('');
+        
+        if (templates.length > 5) {
+          container.innerHTML += `<div class="text-center pt-2"><button onclick="showTemplatesModal()" class="text-xs text-pink-500 hover:text-pink-600 font-medium">查看全部 ${templates.length} 个模板 →</button></div>`;
+        }
+      } catch (error) {
+        console.error('加载模板失败:', error);
+      }
+    }
+
+    async function loadTrips() {
+      try {
+        const res = await fetch('/bydesign/api/trips');
+        const trips = await res.json();
+        const container = document.getElementById('tripsList');
+        
+        if (trips.length === 0) {
+          container.innerHTML = '<div class="text-center py-8 text-gray-400">暂无出行记录</div>';
+          return;
+        }
+        
+        container.innerHTML = trips.map(trip => {
+          const statusBadge = trip.status === 'completed' 
+            ? '<span class="text-xs px-3 py-1 bg-green-100 text-green-700 rounded-full font-medium">✅ 已完成</span>'
+            : '<span class="text-xs px-3 py-1 bg-blue-100 text-blue-700 rounded-full font-medium">⏳ 计划中</span>';
+          
+          const checklistCount = trip.checklist_snapshot ? trip.checklist_snapshot.length : 0;
+          const customCount = trip.custom_items ? trip.custom_items.length : 0;
+          
+          return `
+          <div class="p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl hover:shadow-md transition-all">
+            <div class="flex justify-between items-start mb-2">
+              <div class="flex-1">
+                <h3 class="font-bold text-gray-800 text-base">${escapeHtml(trip.name)}</h3>
+                <p class="text-xs text-gray-500 mt-1">${new Date(trip.created_at * 1000).toLocaleString('zh-CN')}</p>
+                <p class="text-xs text-gray-600 mt-2">📋 ${checklistCount} 通用 + ✨ ${customCount} 自定义</p>
+              </div>
+              ${statusBadge}
+            </div>
+            <div class="flex gap-2 mt-3">
+              <button onclick="viewTrip('${trip.id}')" class="text-xs px-3 py-1.5 bg-white text-blue-600 rounded-lg hover:bg-blue-50 transition-all font-medium">查看详情</button>
+              ${trip.status !== 'completed' ? `<button onclick="completeTrip('${trip.id}')" class="text-xs px-3 py-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all font-medium">完成出行</button>` : ''}
+              <button onclick="deleteTrip('${trip.id}')" class="text-xs px-3 py-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-all font-medium">删除</button>
+            </div>
+          </div>
+        `}).join('');
+      } catch (error) {
+        console.error('加载出行记录失败:', error);
+      }
+    }
+
+    async function createTrip() {
+      const input = document.getElementById('tripNameInput');
+      const name = input.value.trim();
+      if (!name) return alert('请输入出行名称');
+      
+      try {
+        await fetch('/bydesign/api/trips', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, description: '' })
+        });
+        input.value = '';
+        loadTrips();
+        showResult('出行创建成功', 'success');
+      } catch (error) {
+        console.error('创建失败:', error);
+        showResult('创建失败', 'error');
+      }
+    }
+
+    async function viewTrip(tripId) {
+      currentTripId = tripId;
+      try {
+        const res = await fetch(`/bydesign/api/trips/${tripId}`);
+        const trip = await res.json();
+        
+        document.getElementById('detailTripName').textContent = trip.name;
+        
+        // 加载通用检查清单快照
+        const checklistContainer = document.getElementById('detailChecklist');
+        if (trip.checklist_snapshot && trip.checklist_snapshot.length > 0) {
+          checklistContainer.innerHTML = trip.checklist_snapshot.map(item => `
+            <div class="checklist-item flex items-center gap-3 p-3 rounded-xl cursor-pointer ${item.completed ? 'completed' : ''}" onclick="toggleTripItem('${tripId}', '${item.id}', ${!item.completed}, false)">
+              <div class="w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${item.completed ? 'bg-indigo-500 border-indigo-500' : 'border-gray-300'}">
+                ${item.completed ? '<span class="text-white text-xs">✓</span>' : ''}
+              </div>
+              <span class="item-text flex-1 text-gray-700 text-sm">${escapeHtml(item.text)}</span>
+            </div>
+          `).join('');
+        } else {
+          checklistContainer.innerHTML = '<div class="text-center py-4 text-gray-400 text-sm">创建出行时未同步通用检查清单</div>';
+        }
+        
+        // 加载自定义检查项
+        loadCustomItems(trip);
+        
+        document.getElementById('tripDetailModal').classList.remove('hidden');
+      } catch (error) {
+        console.error('加载详情失败:', error);
+        showResult('加载失败', 'error');
+      }
+    }
+
+    function loadCustomItems(trip) {
+      const container = document.getElementById('detailCustomItems');
+      const items = trip.custom_items || [];
+      
+      if (items.length === 0) {
+        container.innerHTML = '<div class="text-center py-4 text-gray-400 text-sm bg-gradient-to-r from-pink-50 to-rose-50 rounded-xl">暂无自定义检查项<br><span class="text-xs">手动添加或点击"📥 导入模板"批量导入</span></div>';
+        return;
+      }
+      
+      container.innerHTML = items.map(item => `
+        <div class="checklist-item flex items-center gap-3 p-3 rounded-xl cursor-pointer ${item.completed ? 'completed' : ''}" onclick="toggleTripItem('${trip.id}', '${item.id}', ${!item.completed}, true)">
+          <div class="w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${item.completed ? 'bg-pink-500 border-pink-500' : 'border-gray-300'}">
+            ${item.completed ? '<span class="text-white text-xs">✓</span>' : ''}
+          </div>
+          <span class="item-text flex-1 text-gray-700 text-sm">${escapeHtml(item.text)}</span>
+          ${item.from_template ? `<span class="text-xs px-2 py-0.5 bg-pink-100 text-pink-600 rounded">模板</span>` : ''}
+          <button onclick="event.stopPropagation(); deleteCustomItem('${trip.id}', '${item.id}')" class="text-gray-300 hover:text-red-500 transition-colors text-sm">🗑️</button>
+        </div>
+      `).join('');
+    }
+
+    async function toggleTripItem(tripId, itemId, completed, isCustom) {
+      try {
+        const path = isCustom ? 'items' : 'checklist';
+        await fetch(`/bydesign/api/trips/${tripId}/${path}/${itemId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ completed, is_custom: isCustom })
+        });
+        viewTrip(tripId); // 刷新详情
+      } catch (error) {
+        console.error('更新失败:', error);
+      }
+    }
+
+    async function addCustomItem() {
+      const input = document.getElementById('customItemInput');
+      const text = input.value.trim();
+      if (!text || !currentTripId) return;
+      
+      try {
+        await fetch(`/bydesign/api/trips/${currentTripId}/items`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text })
+        });
+        input.value = '';
+        viewTrip(currentTripId); // 刷新详情
+      } catch (error) {
+        console.error('添加失败:', error);
+      }
+    }
+
+    async function deleteCustomItem(tripId, itemId) {
+      if (!confirm('确定删除此项？')) return;
+      try {
+        await fetch(`/bydesign/api/trips/${tripId}/items/${itemId}`, { method: 'DELETE' });
+        viewTrip(tripId);
+      } catch (error) {
+        console.error('删除失败:', error);
+      }
+    }
+
+    async function completeTrip(tripId) {
+      if (!confirm('确认完成此出行？')) return;
+      try {
+        await fetch(`/bydesign/api/trips/${tripId}/complete`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        loadTrips();
+        showResult('出行已完成', 'success');
+      } catch (error) {
+        console.error('完成失败:', error);
+        showResult('完成失败', 'error');
+      }
+    }
+
+    async function deleteTrip(tripId) {
+      if (!confirm('确定删除此出行记录？')) return;
+      try {
+        await fetch(`/bydesign/api/trips/${tripId}`, { method: 'DELETE' });
+        loadTrips();
+        showResult('出行已删除', 'success');
+      } catch (error) {
+        console.error('删除失败:', error);
+        showResult('删除失败', 'error');
+      }
+    }
+
+    function closeTripDetail() {
+      document.getElementById('tripDetailModal').classList.add('hidden');
+      currentTripId = null;
+    }
+
+    // ========== 模板管理 ==========
+    async function showTemplatesModal() {
+      document.getElementById('templatesModal').classList.remove('hidden');
+      loadTemplates();
+    }
+
+    function closeTemplatesModal() {
+      document.getElementById('templatesModal').classList.add('hidden');
+    }
+
+    async function loadTemplates() {
+      try {
+        const res = await fetch('/bydesign/api/templates');
+        const templates = await res.json();
+        document.getElementById('templatesTotal').textContent = `${templates.length} 个`;
+        
+        const container = document.getElementById('templatesList');
+        if (templates.length === 0) {
+          container.innerHTML = '<div class="text-center py-8 text-gray-400 text-sm bg-gradient-to-r from-pink-50 to-rose-50 rounded-xl">暂无模板<br><span class="text-xs">创建第一个模板开始使用</span></div>';
+          return;
+        }
+        
+        container.innerHTML = templates.map(t => `
+          <div class="flex items-center justify-between p-3 bg-gradient-to-r from-pink-50 to-rose-50 rounded-xl">
+            <div class="flex-1">
+              <h4 class="font-semibold text-gray-800 text-sm">${escapeHtml(t.name)}</h4>
+              <p class="text-xs text-gray-500">${t.items ? t.items.length : 0} 项 · ${new Date(t.created_at * 1000).toLocaleDateString('zh-CN')}</p>
+              ${t.category ? `<p class="text-xs text-pink-600 mt-1">📂 ${escapeHtml(t.category)}</p>` : ''}
+            </div>
+            <button onclick="deleteTemplate('${t.id}')" class="text-gray-400 hover:text-red-500 transition-colors p-2">🗑️</button>
+          </div>
+        `).join('');
+      } catch (error) {
+        console.error('加载模板失败:', error);
+      }
+    }
+
+    async function createTemplate() {
+      const nameInput = document.getElementById('templateName');
+      const itemsInput = document.getElementById('templateItems');
+      
+      const name = nameInput.value.trim();
+      const itemsText = itemsInput.value.trim();
+      
+      if (!name) {
+        showResult('请输入模板名称', 'warning');
+        return;
+      }
+      
+      if (!itemsText) {
+        showResult('请输入检查项', 'warning');
+        return;
+      }
+      
+      const items = itemsText.split('\n').filter(line => line.trim()).map(line => ({ text: line.trim() }));
+      
+      try {
+        await fetch('/bydesign/api/templates', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, items })
+        });
+        
+        nameInput.value = '';
+        itemsInput.value = '';
+        loadTemplates();
+        loadTemplatesPreview();
+        showResult('模板创建成功（重复项已自动过滤）', 'success');
+      } catch (error) {
+        console.error('创建失败:', error);
+        showResult('创建失败', 'error');
+      }
+    }
+
+    async function deleteTemplate(templateId) {
+      if (!confirm('确定删除此模板？')) return;
+      try {
+        await fetch(`/bydesign/api/templates/${templateId}`, { method: 'DELETE' });
+        loadTemplates();
+        loadTemplatesPreview();
+        showResult('模板已删除', 'success');
+      } catch (error) {
+        console.error('删除失败:', error);
+      }
+    }
+
+    // ========== 导入模板 ==========
+    function showImportTemplate() {
+      if (!currentTripId) return;
+      document.getElementById('importTemplateModal').classList.remove('hidden');
+      loadImportTemplates();
+    }
+
+    function closeImportTemplate() {
+      document.getElementById('importTemplateModal').classList.add('hidden');
+    }
+
+    async function loadImportTemplates() {
+      try {
+        const res = await fetch('/bydesign/api/templates');
+        const templates = await res.json();
+        const container = document.getElementById('importTemplatesList');
+        
+        if (templates.length === 0) {
+          container.innerHTML = '<div class="text-center py-4 text-gray-400 text-sm">暂无模板<br><button onclick="closeImportTemplate(); showTemplatesModal();" class="mt-2 text-pink-500 hover:text-pink-600 font-medium text-xs">去创建模板</button></div>';
+          return;
+        }
+        
+        container.innerHTML = templates.map(t => `
+          <button onclick="importTemplate('${t.id}')" class="w-full text-left p-3 bg-gradient-to-r from-pink-50 to-rose-50 hover:from-pink-100 hover:to-rose-100 rounded-xl transition-all">
+            <div class="flex justify-between items-start">
+              <div>
+                <h4 class="font-semibold text-gray-800 text-sm">${escapeHtml(t.name)}</h4>
+                <p class="text-xs text-gray-500 mt-1">${t.items ? t.items.length : 0} 项检查</p>
+              </div>
+              <span class="text-lg">📥</span>
+            </div>
+          </button>
+        `).join('');
+      } catch (error) {
+        console.error('加载失败:', error);
+      }
+    }
+
+    async function importTemplate(templateId) {
+      if (!currentTripId) return;
+      
+      try {
+        const response = await fetch(`/bydesign/api/trips/${currentTripId}/templates`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ template_id: templateId })
+        });
+        const result = await response.json();
+        
+        closeImportTemplate();
+        viewTrip(currentTripId);
+        
+        let msg = `成功导入 ${result.imported} 项检查`;
+        if (result.skipped > 0) {
+          msg += `（${result.skipped} 项重复已过滤）`;
+        }
+        showResult(msg, 'success');
+      } catch (error) {
+        console.error('导入失败:', error);
+        showResult('导入失败', 'error');
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // ========== 提示词设置 ==========
+    const DEFAULT_SYSTEM_PROMPT = `理解这些信息的意图，并选择 webviewer 中合适的模块保存这些信息，然后刷新页面的显示。
+
+用户消息："{message}"
+
+可用项目：
+1. 出行相关（出差、旅行、出行）→ By Design (/bydesign/)
+   - 动作：创建出行记录
+   - API: POST /bydesign/api/trips
+   - 数据：{name, description}
+
+2. 搬家相关（搬家、打包、物品记录）→ Cherry Pick (/cherry-pick/)
+   - 动作：记录物品位置
+   - API: POST /cherry-pick/api/moves/{moveId}/items
+   - 数据：{name, before_location, after_location}
+
+3. 物品相关（找、查询、记录位置）→ Momhand (/momhand/)
+   - 动作：添加/搜索物品
+   - API: POST /momhand/api/items 或 GET /momhand/api/search?q=xxx
+   - 数据：{name, type, location, usage}
+
+请：
+1. 理解用户意图
+2. 选择合适的项目
+3. **执行具体的记录动作**（调用相应的 API 保存数据）
+4. 返回确认消息
+
+返回 JSON 格式：
+{
+  "success": true,
+  "project": "bydesign 或 cherry_pick 或 momhand",
+  "action": "操作类型",
+  "message": "友好的回复，确认已保存",
+  "refresh": "/页面路径/",
+  "data": {保存的数据}
+}`;
+
+    function showSettings() {
+      const modal = document.getElementById('settingsModal');
+      modal.classList.remove('hidden');
+      
+      const savedPrompt = localStorage.getItem('bydesign_systemPrompt');
+      document.getElementById('systemPrompt').value = savedPrompt || DEFAULT_SYSTEM_PROMPT;
+    }
+
+    function hideSettings() {
+      const modal = document.getElementById('settingsModal');
+      modal.classList.add('hidden');
+    }
+
+    function saveSettings() {
+      const prompt = document.getElementById('systemPrompt').value;
+      localStorage.setItem('bydesign_systemPrompt', prompt);
+      showResult('设置已保存！下次发送消息时会使用新的提示词。', 'success');
+      hideSettings();
+    }
+
+    function resetPrompt() {
+      if (confirm('确定要恢复默认提示词吗？')) {
+        document.getElementById('systemPrompt').value = DEFAULT_SYSTEM_PROMPT;
+      }
+    }
+
+    document.getElementById('settingsModal')?.addEventListener('click', function(e) {
+      if (e.target === this) hideSettings();
+    });
+
+    // 页面加载时初始化
+    loadChecklist();
+    loadTemplatesPreview();
+    loadTrips();
+
+    // 点击弹窗外部关闭
+    document.getElementById('tripDetailModal').addEventListener('click', function(e) {
+      if (e.target === this) closeTripDetail();
+    });
+    document.getElementById('templatesModal').addEventListener('click', function(e) {
+      if (e.target === this) closeTemplatesModal();
+    });
+    document.getElementById('importTemplateModal').addEventListener('click', function(e) {
+      if (e.target === this) closeImportTemplate();
+    });
+  </script>
+</body>
+</html>

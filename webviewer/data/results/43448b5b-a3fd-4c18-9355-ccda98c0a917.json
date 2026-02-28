@@ -1,0 +1,16 @@
+{
+  "msg_id": "43448b5b-a3fd-4c18-9355-ccda98c0a917",
+  "original_message": "测试消息",
+  "processed_by": "openclaw_agent",
+  "timestamp": 1772242145,
+  "processing": false,
+  "success": true,
+  "project": "bydesign",
+  "action": "test",
+  "message": "收到测试消息！✅ 系统正常运行，有什么可以帮你的吗？",
+  "refresh": "/bydesign/",
+  "data": {
+    "test": true,
+    "timestamp": "2026-02-27T08:10:00Z"
+  }
+}

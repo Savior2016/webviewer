@@ -1,0 +1,20 @@
+{
+  "msg_id": "677eeac4-1651-49cf-8171-0721783e5011",
+  "original_message": "添加以下项目到通用检查单：- 检查 airtag 电池 - 关灯 - 拿药",
+  "processed_by": "openclaw_agent",
+  "timestamp": 1772240386,
+  "success": true,
+  "project": "bydesign",
+  "action": "add_checklist_items",
+  "message": "已添加 3 项到通用检查单！✅ 包括：检查 airtag 电池、关灯、拿药。",
+  "refresh": "/bydesign/",
+  "data": {
+    "checklist_name": "通用检查单",
+    "items_added": [
+      "检查 airtag 电池",
+      "关灯",
+      "拿药"
+    ],
+    "total_items": 3
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "msg_id": "a069a889-f767-4595-acfd-cb28976877ac",
+  "original_message": "我要出差 3 天，帮我创建一个出行清单",
+  "project": "bydesign",
+  "action": "create_trip",
+  "success": true,
+  "result": "✅ 已创建出行记录\n\n📝 名称：出差3天\n📅 创建时间：2026-02-27 11:59\n\n📋 已自动加载通用检查清单，包括：\n• 关闭所有窗户\n• 关闭所有电器电源\n• 检查门锁\n• 清空垃圾\n• 检查水龙头\n\n👉 访问：https://localhost/bydesign/ 查看详细清单",
+  "timestamp": 1772164744,
+  "processed": true
+}
