@@ -46,6 +46,47 @@
   };
 
   /**
+   * 添加背景虚化层
+   */
+  function addBackdropBlur() {
+    // 检查是否已存在虚化层
+    if (document.getElementById('chatBackdrop')) return;
+    
+    const backdrop = document.createElement('div');
+    backdrop.id = 'chatBackdrop';
+    backdrop.className = 'fixed inset-0 bg-black/20 backdrop-blur-sm z-[9999] opacity-0 pointer-events-none transition-opacity duration-300';
+    document.body.appendChild(backdrop);
+    
+    // 监听面板展开/关闭
+    const panel = document.getElementById('fabPanel');
+    const toggleBtn = document.querySelector('[onclick="togglePanel()"]');
+    
+    if (panel && toggleBtn) {
+      // 使用 MutationObserver 监听面板的 hidden 类变化
+      const observer = new MutationObserver(() => {
+        if (panel.classList.contains('hidden')) {
+          // 面板关闭
+          backdrop.classList.add('opacity-0', 'pointer-events-none');
+          backdrop.classList.remove('pointer-events-auto');
+        } else {
+          // 面板展开
+          backdrop.classList.remove('opacity-0', 'pointer-events-none');
+          backdrop.classList.add('pointer-events-auto');
+        }
+      });
+      
+      observer.observe(panel, { attributes: true, attributeFilter: ['class'] });
+      
+      // 点击虚化层关闭面板
+      backdrop.addEventListener('click', () => {
+        if (typeof togglePanel === 'function') {
+          togglePanel();
+        }
+      });
+    }
+  }
+
+  /**
    * 获取项目主题色配置
    */
   function getThemeColors() {
@@ -98,6 +139,9 @@
       
       // 获取主题色
       const theme = getThemeColors();
+      
+      // 添加背景虚化层
+      addBackdropBlur();
       
       // 添加 CSS 样式
       const style = document.createElement('style');
