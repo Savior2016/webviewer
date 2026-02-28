@@ -534,7 +534,7 @@
         if (result.success) {
           // 如果是异步处理（processing: true），开始轮询
           if (result.processing) {
-            addMessage('⏳ 后台处理中，请稍候...', false);
+            addMessage('后台处理中，请稍候...', false);
             pollResult(result.msg_id);
           } else {
             // 同步处理完成
@@ -543,14 +543,14 @@
             
             // 如果需要刷新页面
             if (result.refresh) {
-              addMessage(`🔄 即将跳转到 ${result.refresh}...`, false);
+              addMessage(`即将跳转到 ${result.refresh}...`, false);
               setTimeout(() => {
                 window.location.href = result.refresh + '?t=' + Date.now();
               }, 3000);
             }
           }
         } else {
-          addMessage('抱歉，处理失败了，请重试~', false);
+          addMessage('抱歉，处理失败了，请重试', false);
         }
       } catch (error) {
         removeTyping();
@@ -577,17 +577,17 @@
               addMessage(formattedResult, false);
               
               if (result.data.refresh) {
-                addMessage(`🔄 即将跳转到 ${result.data.refresh}...`, false);
+                addMessage(`即将跳转到 ${result.data.refresh}...`, false);
                 setTimeout(() => {
                   window.location.href = result.data.refresh + '?t=' + Date.now();
                 }, 2000);
               }
             } else {
-              addMessage(`❌ ${result.data?.error || result.data?.message || '处理失败'}`, false);
+              addMessage(`错误：${result.data?.error || result.data?.message || '处理失败'}`, false);
             }
           } else if (attempts >= maxAttempts) {
             clearInterval(pollTimer);
-            addMessage('⏰ 处理超时，请刷新页面查看结果', false);
+            addMessage('处理超时，请刷新页面查看结果', false);
           }
         } catch (error) {
           console.error('轮询失败:', error);
