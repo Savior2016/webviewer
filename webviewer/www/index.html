@@ -332,12 +332,16 @@
 3. **执行具体的记录动作**（调用相应的 API 保存数据）
 4. 返回确认消息
 
+**重要要求：**
+- message 字段使用简洁的中文，**不要使用任何表情符号（emoji）**
+- 只返回必要的文字信息，保持专业简洁
+
 返回 JSON 格式：
 {
   "success": true,
   "project": "bydesign 或 cherry_pick 或 momhand",
   "action": "操作类型",
-  "message": "友好的回复，确认已保存",
+  "message": "简洁的中文回复，不含表情符号",
   "refresh": "/页面路径/",
   "data": {保存的数据}
 }`;
@@ -592,13 +596,12 @@
     }
 
     function formatResult(text) {
-      // 将 emoji 和换行转换为 HTML
-      return text
-        .replace(/\n/g, '<br>')
-        .replace(/✅/g, '<span class="text-green-500">✅</span>')
-        .replace(/📦/g, '<span class="text-purple-500">📦</span>')
-        .replace(/📍/g, '<span class="text-blue-500">📍</span>')
-        .replace(/👉/g, '<span class="text-pink-500">👉</span>');
+      // 移除常见表情符号（emoji），保持简洁
+      const emojiRegex = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F900}-\u{1F9FF}\u{1F018}-\u{1F270}\u{238C}-\u{23FF}\u{1F004}]/gu;
+      const cleanText = text.replace(emojiRegex, '');
+      
+      // 将换行转换为 HTML
+      return cleanText.replace(/\n/g, '<br>');
     }
 
     function escapeHtml(text) {

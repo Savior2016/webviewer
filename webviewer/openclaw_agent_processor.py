@@ -12,6 +12,7 @@
 import subprocess
 import json
 import re
+import os
 from pathlib import Path
 import threading
 
@@ -87,12 +88,16 @@ def process_via_openclaw_agent(message: str) -> dict:
 3. **执行具体的记录动作**（调用相应的 API 保存数据）
 4. 返回确认消息
 
+**重要要求：**
+- message 字段使用简洁的中文，**不要使用任何表情符号（emoji）**
+- 只返回必要的文字信息，保持专业简洁
+
 返回 JSON 格式：
 {{
   "success": true,
   "project": "bydesign 或 cherry_pick 或 momhand",
   "action": "操作类型",
-  "message": "友好的回复，确认已保存",
+  "message": "简洁的中文回复，不含表情符号",
   "refresh": "/页面路径/",
   "data": {{保存的数据}}
 }}"""
@@ -139,20 +144,25 @@ def _execute_openclaw_command(full_prompt: str) -> dict:
     """
     执行 OpenClaw 命令（内部函数，用于超时控制）
     """
+    # 设置环境变量，确保能找到 openclaw 命令
+    env = os.environ.copy()
+    env['PATH'] = '/root/.nvm/versions/node/v22.22.0/bin:' + env.get('PATH', '')
+    
     cmd = [
-        'openclaw',
+        '/root/.nvm/versions/node/v22.22.0/bin/openclaw',
         'agent',
-        '--agent', 'dummy',
+        '--agent', 'main',
         '-m', full_prompt
     ]
     
-    print(f"🔧 执行：openclaw agent --agent dummy -m \"...\"")
+    print(f"🔧 执行：openclaw agent --agent main -m \"...\"")
     
     result = subprocess.run(
         cmd,
         capture_output=True,
         text=True,
-        timeout=30  # subprocess 级别的超时
+        timeout=30,  # subprocess 级别的超时
+        env=env  # 使用包含 node bin 目录的 PATH
     )
     
     print(f"✅ 执行完成，返回码：{result.returncode}")
