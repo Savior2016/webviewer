@@ -51,30 +51,69 @@
   function enhancePanelStyle() {
     const panel = document.getElementById('fabPanel');
     if (panel) {
-      // 添加更强的阴影和边框
-      panel.classList.add('shadow-2xl', 'border', 'border-white/30');
+      // 添加悬浮样式类
+      panel.classList.add('chat-panel-enhanced');
       
-      // 添加 CSS 动画效果
+      // 根据项目配置获取主色调
+      const colors = window.chatConfig?.colors || DEFAULT_CONFIG.colors;
+      const primaryColor = colors.primaryText?.replace('text-', '') || 'blue-500';
+      
+      // 添加 CSS 样式
       const style = document.createElement('style');
       style.textContent = `
-        #fabPanel {
-          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1);
+        .chat-panel-enhanced {
+          box-shadow: 
+            0 25px 50px -12px rgba(0, 0, 0, 0.25),
+            0 0 0 1px rgba(255, 255, 255, 0.5),
+            inset 0 1px 0 rgba(255, 255, 255, 0.8);
           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          position: relative;
         }
-        #fabPanel:hover {
-          box-shadow: 0 35px 60px -12px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.2);
-          transform: translateY(-2px);
+        .chat-panel-enhanced::before {
+          content: '';
+          position: absolute;
+          inset: -1px;
+          border-radius: inherit;
+          padding: 1px;
+          background: linear-gradient(135deg, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.2) 100%);
+          -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+          -webkit-mask-composite: xor;
+          mask-composite: exclude;
+          pointer-events: none;
         }
-        .chat-toast {
-          backdrop-filter: blur(12px);
-          box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.15);
+        .chat-panel-enhanced:hover {
+          box-shadow: 
+            0 35px 60px -12px rgba(0, 0, 0, 0.3),
+            0 0 0 1px rgba(255, 255, 255, 0.6),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+          transform: translateY(-3px) scale(1.01);
         }
-        @keyframes slideDown {
-          from { opacity: 0; transform: translateY(-20px) scale(0.95); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
+        .chat-panel-enhanced .result-message {
+          backdrop-filter: blur(8px);
+          border-left: 3px solid;
         }
-        .toast-animate {
-          animation: slideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        .chat-panel-enhanced .result-success {
+          background: linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(34, 197, 94, 0.02) 100%);
+          border-left-color: #22c55e;
+        }
+        .chat-panel-enhanced .result-error {
+          background: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(239, 68, 68, 0.02) 100%);
+          border-left-color: #ef4444;
+        }
+        .chat-panel-enhanced .result-warning {
+          background: linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(245, 158, 11, 0.02) 100%);
+          border-left-color: #f59e0b;
+        }
+        .chat-panel-enhanced .result-info {
+          background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(59, 130, 246, 0.02) 100%);
+          border-left-color: #3b82f6;
+        }
+        @keyframes resultSlideIn {
+          from { opacity: 0; transform: translateX(-10px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+        .result-message {
+          animation: resultSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
       `;
       document.head.appendChild(style);
@@ -248,24 +287,38 @@
   }
 
   /**
-   * 显示结果消息（顶部 Toast）
+   * 显示结果消息（在面板内）
    */
   function showResult(text, type = 'info') {
-    // 创建或获取 toast 容器
-    let toastContainer = document.getElementById('chatToastContainer');
+    // 获取或创建结果容器（在面板内）
+    let resultContainer = document.getElementById('chatResult');
     
-    if (!toastContainer) {
-      toastContainer = document.createElement('div');
-      toastContainer.id = 'chatToastContainer';
-      toastContainer.className = 'fixed top-4 left-0 right-0 z-[200] flex justify-center pointer-events-none px-4';
-      document.body.appendChild(toastContainer);
+    if (!resultContainer) {
+      // 在面板内创建结果容器
+      const panel = document.getElementById('fabPanel');
+      if (!panel) {
+        console.log('[AgentChat] 结果:', text);
+        return;
+      }
+      
+      resultContainer = document.createElement('div');
+      resultContainer.id = 'chatResult';
+      resultContainer.className = 'mb-4 space-y-2';
+      
+      // 插入到面板的开头（标题下方）
+      const header = panel.querySelector('.border-b');
+      if (header && header.parentElement) {
+        header.parentElement.insertBefore(resultContainer, header.nextSibling);
+      } else {
+        panel.insertBefore(resultContainer, panel.firstChild);
+      }
     }
     
-    const colors = {
-      'success': 'bg-green-500/95 border-green-400 text-white',
-      'error': 'bg-red-500/95 border-red-400 text-white',
-      'warning': 'bg-amber-500/95 border-amber-400 text-white',
-      'info': 'bg-blue-500/95 border-blue-400 text-white'
+    const typeClasses = {
+      'success': 'result-success',
+      'error': 'result-error',
+      'warning': 'result-warning',
+      'info': 'result-info'
     };
 
     const icons = {
@@ -275,35 +328,27 @@
       'info': 'ℹ️'
     };
 
-    // 移除旧的 toast（只保留最新一条）
-    toastContainer.innerHTML = '';
+    // 只保留最新一条消息（移除旧的）
+    resultContainer.innerHTML = '';
     
-    // 创建新的 toast
-    const toast = document.createElement('div');
-    toast.className = `chat-toast ${colors[type]} border px-5 py-3.5 rounded-2xl shadow-lg toast-animate pointer-events-auto max-w-md w-full`;
-    toast.innerHTML = `
-      <div class="flex items-center gap-3">
-        <span class="text-xl flex-shrink-0">${icons[type]}</span>
-        <span class="flex-1 font-medium text-sm">${text}</span>
-        <button onclick="this.parentElement.parentElement.remove()" class="text-white/70 hover:text-white flex-shrink-0 transition-colors">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    // 创建新的结果消息
+    const messageEl = document.createElement('div');
+    messageEl.className = `result-message ${typeClasses[type]} border rounded-xl px-4 py-3 shadow-sm`;
+    messageEl.innerHTML = `
+      <div class="flex items-start gap-3">
+        <span class="text-lg flex-shrink-0">${icons[type]}</span>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-medium text-gray-700 break-words">${text}</p>
+        </div>
+        <button onclick="this.parentElement.parentElement.remove()" class="text-gray-400 hover:text-gray-600 flex-shrink-0 transition-colors p-0.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
           </svg>
         </button>
       </div>
     `;
     
-    toastContainer.appendChild(toast);
-
-    // 5 秒后自动移除
-    setTimeout(() => {
-      if (toast.parentElement) {
-        toast.style.transition = 'all 0.3s ease';
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateY(-20px)';
-        setTimeout(() => toast.remove(), 300);
-      }
-    }, 5000);
+    resultContainer.appendChild(messageEl);
   }
 
   /**
