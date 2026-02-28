@@ -25,7 +25,8 @@
   let chatState = {
     polling: false,
     currentMsgId: null,
-    pollTimer: null
+    pollTimer: null,
+    isSending: false
   };
 
   /**
@@ -38,8 +39,47 @@
     // 加载保存的提示词
     loadSavedPrompt();
     
+    // 添加面板悬浮效果
+    enhancePanelStyle();
+    
     console.log(`[AgentChat] 已初始化，项目：${chatConfig.project}`);
   };
+
+  /**
+   * 增强面板样式（悬浮效果）
+   */
+  function enhancePanelStyle() {
+    const panel = document.getElementById('fabPanel');
+    if (panel) {
+      // 添加更强的阴影和边框
+      panel.classList.add('shadow-2xl', 'border', 'border-white/30');
+      
+      // 添加 CSS 动画效果
+      const style = document.createElement('style');
+      style.textContent = `
+        #fabPanel {
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1);
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        #fabPanel:hover {
+          box-shadow: 0 35px 60px -12px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.2);
+          transform: translateY(-2px);
+        }
+        .chat-toast {
+          backdrop-filter: blur(12px);
+          box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.15);
+        }
+        @keyframes slideDown {
+          from { opacity: 0; transform: translateY(-20px) scale(0.95); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .toast-animate {
+          animation: slideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+      `;
+      document.head.appendChild(style);
+    }
+  }
 
   /**
    * 加载保存的提示词
@@ -70,6 +110,8 @@
    * 发送消息
    */
   window.sendMessage = async function() {
+    if (chatState.isSending) return;
+    
     const input = document.getElementById('messageInput');
     const message = input?.value.trim();
     
@@ -78,8 +120,9 @@
       return;
     }
 
-    // 显示 loading 状态
-    showLoading(true);
+    // 设置发送中状态
+    chatState.isSending = true;
+    updateSendButton(true);
     input.value = '';
 
     try {
@@ -101,19 +144,47 @@
         }
       } else {
         showResult(result.error || '处理失败', 'error');
-        showLoading(false);
+        updateSendButton(false);
       }
     } catch (error) {
       showResult(`发送失败：${error.message}`, 'error');
-      showLoading(false);
+      updateSendButton(false);
     }
   };
+
+  /**
+   * 更新发送按钮状态
+   */
+  function updateSendButton(isSending) {
+    const sendBtn = document.querySelector('button[onclick="sendMessage()"]');
+    if (!sendBtn) return;
+    
+    if (isSending) {
+      sendBtn.disabled = true;
+      sendBtn.classList.add('opacity-70', 'cursor-wait');
+      sendBtn.innerHTML = `
+        <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <span>发送中...</span>
+      `;
+    } else {
+      sendBtn.disabled = false;
+      sendBtn.classList.remove('opacity-70', 'cursor-wait');
+      sendBtn.innerHTML = `
+        <span>📤</span>
+        <span>发送</span>
+      `;
+    }
+  }
 
   /**
    * 处理结果
    */
   function handleResult(result) {
-    showLoading(false);
+    updateSendButton(false);
+    chatState.isSending = false;
     
     const message = result.message || '处理完成';
     
@@ -160,13 +231,15 @@
             handleResult(result.data);
           } else {
             showResult('处理失败', 'error');
-            showLoading(false);
+            updateSendButton(false);
+            chatState.isSending = false;
           }
         } else if (attempts >= maxAttempts) {
           clearInterval(chatState.pollTimer);
           chatState.polling = false;
           showResult('处理超时，请刷新页面查看结果', 'warning');
-          showLoading(false);
+          updateSendButton(false);
+          chatState.isSending = false;
         }
       } catch (error) {
         console.error('轮询失败:', error);
@@ -175,52 +248,24 @@
   }
 
   /**
-   * 显示 loading 状态
-   */
-  function showLoading(isLoading) {
-    const loadingEl = document.getElementById('chatLoading');
-    const sendBtn = document.querySelector('button[onclick="sendMessage()"]');
-    
-    if (loadingEl) {
-      if (isLoading) {
-        loadingEl.classList.remove('hidden');
-        loadingEl.innerHTML = `
-          <div class="flex items-center justify-center gap-2 text-sm">
-            <div class="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent"></div>
-            <span>正在处理中...</span>
-          </div>
-        `;
-      } else {
-        loadingEl.classList.add('hidden');
-      }
-    }
-    
-    if (sendBtn) {
-      sendBtn.disabled = isLoading;
-      if (isLoading) {
-        sendBtn.classList.add('opacity-50', 'cursor-not-allowed');
-      } else {
-        sendBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-      }
-    }
-  }
-
-  /**
-   * 显示结果消息
+   * 显示结果消息（顶部 Toast）
    */
   function showResult(text, type = 'info') {
-    const resultEl = document.getElementById('chatResult');
+    // 创建或获取 toast 容器
+    let toastContainer = document.getElementById('chatToastContainer');
     
-    if (!resultEl) {
-      console.log('[AgentChat] 结果:', text);
-      return;
+    if (!toastContainer) {
+      toastContainer = document.createElement('div');
+      toastContainer.id = 'chatToastContainer';
+      toastContainer.className = 'fixed top-4 left-0 right-0 z-[200] flex justify-center pointer-events-none px-4';
+      document.body.appendChild(toastContainer);
     }
-
+    
     const colors = {
-      'success': 'bg-green-50 border-green-200 text-green-700',
-      'error': 'bg-red-50 border-red-200 text-red-700',
-      'warning': 'bg-amber-50 border-amber-200 text-amber-700',
-      'info': 'bg-blue-50 border-blue-200 text-blue-700'
+      'success': 'bg-green-500/95 border-green-400 text-white',
+      'error': 'bg-red-500/95 border-red-400 text-white',
+      'warning': 'bg-amber-500/95 border-amber-400 text-white',
+      'info': 'bg-blue-500/95 border-blue-400 text-white'
     };
 
     const icons = {
@@ -230,19 +275,34 @@
       'info': 'ℹ️'
     };
 
-    resultEl.className = `${colors[type]} border px-4 py-3 rounded-xl shadow-lg expand-in text-sm`;
-    resultEl.innerHTML = `
-      <div class="flex items-start gap-2">
-        <span class="text-lg flex-shrink-0">${icons[type]}</span>
-        <span class="flex-1">${text}</span>
-        <button onclick="this.parentElement.parentElement.classList.add('hidden')" class="text-current opacity-50 hover:opacity-100 flex-shrink-0">×</button>
+    // 移除旧的 toast（只保留最新一条）
+    toastContainer.innerHTML = '';
+    
+    // 创建新的 toast
+    const toast = document.createElement('div');
+    toast.className = `chat-toast ${colors[type]} border px-5 py-3.5 rounded-2xl shadow-lg toast-animate pointer-events-auto max-w-md w-full`;
+    toast.innerHTML = `
+      <div class="flex items-center gap-3">
+        <span class="text-xl flex-shrink-0">${icons[type]}</span>
+        <span class="flex-1 font-medium text-sm">${text}</span>
+        <button onclick="this.parentElement.parentElement.remove()" class="text-white/70 hover:text-white flex-shrink-0 transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
       </div>
     `;
-    resultEl.classList.remove('hidden');
+    
+    toastContainer.appendChild(toast);
 
-    // 5 秒后自动隐藏
+    // 5 秒后自动移除
     setTimeout(() => {
-      resultEl.classList.add('hidden');
+      if (toast.parentElement) {
+        toast.style.transition = 'all 0.3s ease';
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(-20px)';
+        setTimeout(() => toast.remove(), 300);
+      }
     }, 5000);
   }
 
