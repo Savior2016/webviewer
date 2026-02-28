@@ -26,7 +26,34 @@
     polling: false,
     currentMsgId: null,
     pollTimer: null,
-    isSending: false
+    isSending: false,
+    streamTimer: null,
+    streamText: ''
+  };
+
+  // 流式显示的步骤文本
+  const STREAM_STEPS = {
+    'bydesign': [
+      '正在理解你的出行需求...',
+      '正在分析出行类型...',
+      '正在创建出行记录...',
+      '正在保存数据...',
+      '完成！✅'
+    ],
+    'cherry_pick': [
+      '正在理解物品信息...',
+      '正在分析物品位置...',
+      '正在记录物品...',
+      '正在保存数据...',
+      '完成！✅'
+    ],
+    'momhand': [
+      '正在理解物品信息...',
+      '正在分析物品分类...',
+      '正在添加物品...',
+      '正在保存数据...',
+      '完成！✅'
+    ]
   };
 
   /**
@@ -44,6 +71,45 @@
     
     console.log(`[AgentChat] 已初始化，项目：${chatConfig.project}`);
   };
+
+  /**
+   * 获取项目主题色配置
+   */
+  function getThemeColors() {
+    const project = window.chatConfig?.project || 'bydesign';
+    
+    const themes = {
+      'bydesign': {
+        // 蓝色主题（已读不回）
+        bgGradient: 'linear-gradient(135deg, rgba(219, 234, 254, 0.95) 0%, rgba(191, 219, 254, 0.92) 50%, rgba(224, 242, 254, 0.95) 100%)',
+        bgGradientDark: 'linear-gradient(135deg, rgba(219, 234, 254, 0.98) 0%, rgba(191, 219, 254, 0.96) 50%, rgba(224, 242, 254, 0.98) 100%)',
+        accentColor: '#3b82f6',
+        accentLight: '#dbeafe',
+        accentGradient: 'linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(59, 130, 246, 0.04) 100%)',
+        borderLeftColor: '#3b82f6'
+      },
+      'cherry_pick': {
+        // 紫色主题（一搬不丢）
+        bgGradient: 'linear-gradient(135deg, rgba(243, 232, 255, 0.95) 0%, rgba(233, 213, 255, 0.92) 50%, rgba(245, 243, 255, 0.95) 100%)',
+        bgGradientDark: 'linear-gradient(135deg, rgba(243, 232, 255, 0.98) 0%, rgba(233, 213, 255, 0.96) 50%, rgba(245, 243, 255, 0.98) 100%)',
+        accentColor: '#a855f7',
+        accentLight: '#f3e8ff',
+        accentGradient: 'linear-gradient(135deg, rgba(168, 85, 247, 0.12) 0%, rgba(168, 85, 247, 0.04) 100%)',
+        borderLeftColor: '#a855f7'
+      },
+      'momhand': {
+        // 绿色主题（妈妈的手）
+        bgGradient: 'linear-gradient(135deg, rgba(220, 252, 231, 0.95) 0%, rgba(187, 247, 208, 0.92) 50%, rgba(228, 255, 244, 0.95) 100%)',
+        bgGradientDark: 'linear-gradient(135deg, rgba(220, 252, 231, 0.98) 0%, rgba(187, 247, 208, 0.96) 50%, rgba(228, 255, 244, 0.98) 100%)',
+        accentColor: '#22c55e',
+        accentLight: '#dcfce7',
+        accentGradient: 'linear-gradient(135deg, rgba(34, 197, 94, 0.12) 0%, rgba(34, 197, 94, 0.04) 100%)',
+        borderLeftColor: '#22c55e'
+      }
+    };
+    
+    return themes[project] || themes['bydesign'];
+  }
 
   /**
    * 添加背景虚化层
@@ -84,45 +150,6 @@
         }
       });
     }
-  }
-
-  /**
-   * 获取项目主题色配置
-   */
-  function getThemeColors() {
-    const project = window.chatConfig?.project || 'bydesign';
-    
-    const themes = {
-      'bydesign': {
-        // 蓝色主题（已读不回）
-        bgGradient: 'linear-gradient(135deg, rgba(219, 234, 254, 0.95) 0%, rgba(191, 219, 254, 0.92) 50%, rgba(224, 242, 254, 0.95) 100%)',
-        bgGradientDark: 'linear-gradient(135deg, rgba(219, 234, 254, 0.98) 0%, rgba(191, 219, 254, 0.96) 50%, rgba(224, 242, 254, 0.98) 100%)',
-        accentColor: '#3b82f6',
-        accentLight: '#dbeafe',
-        accentGradient: 'linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(59, 130, 246, 0.04) 100%)',
-        borderLeftColor: '#3b82f6'
-      },
-      'cherry_pick': {
-        // 紫色主题（一搬不丢）
-        bgGradient: 'linear-gradient(135deg, rgba(243, 232, 255, 0.95) 0%, rgba(233, 213, 255, 0.92) 50%, rgba(245, 243, 255, 0.95) 100%)',
-        bgGradientDark: 'linear-gradient(135deg, rgba(243, 232, 255, 0.98) 0%, rgba(233, 213, 255, 0.96) 50%, rgba(245, 243, 255, 0.98) 100%)',
-        accentColor: '#a855f7',
-        accentLight: '#f3e8ff',
-        accentGradient: 'linear-gradient(135deg, rgba(168, 85, 247, 0.12) 0%, rgba(168, 85, 247, 0.04) 100%)',
-        borderLeftColor: '#a855f7'
-      },
-      'momhand': {
-        // 绿色主题（妈妈的手）
-        bgGradient: 'linear-gradient(135deg, rgba(220, 252, 231, 0.95) 0%, rgba(187, 247, 208, 0.92) 50%, rgba(228, 255, 244, 0.95) 100%)',
-        bgGradientDark: 'linear-gradient(135deg, rgba(220, 252, 231, 0.98) 0%, rgba(187, 247, 208, 0.96) 50%, rgba(228, 255, 244, 0.98) 100%)',
-        accentColor: '#22c55e',
-        accentLight: '#dcfce7',
-        accentGradient: 'linear-gradient(135deg, rgba(34, 197, 94, 0.12) 0%, rgba(34, 197, 94, 0.04) 100%)',
-        borderLeftColor: '#22c55e'
-      }
-    };
-    
-    return themes[project] || themes['bydesign'];
   }
 
   /**
@@ -177,6 +204,66 @@
             inset 0 1px 0 rgba(255, 255, 255, 0.9);
           transform: translateY(-3px) scale(1.01);
         }
+        /* 流式进展样式 */
+        .stream-progress {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+        .stream-step {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 12px;
+          border-radius: 8px;
+          font-size: 13px;
+          transition: all 0.3s ease;
+        }
+        .stream-step.pending {
+          background: rgba(255, 255, 255, 0.5);
+          color: #9ca3af;
+        }
+        .stream-step.active {
+          background: ${theme.accentGradient};
+          color: ${theme.accentColor};
+          font-weight: 500;
+        }
+        .stream-step.completed {
+          background: rgba(34, 197, 94, 0.1);
+          color: #22c55e;
+        }
+        .stream-step .step-icon {
+          width: 16px;
+          height: 16px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+        .stream-step.pending .step-icon {
+          opacity: 0.3;
+        }
+        .stream-step.active .step-icon {
+          animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.7; transform: scale(1.1); }
+        }
+        @keyframes typing {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+        .typing-dot {
+          animation: typing 1.4s infinite;
+          width: 6px;
+          height: 6px;
+          background: currentColor;
+          border-radius: 50%;
+          display: inline-block;
+        }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
         /* 结果消息样式 - 使用主题色系 */
         .chat-panel-enhanced .result-message {
           backdrop-filter: blur(8px);
@@ -254,6 +341,9 @@
     chatState.isSending = true;
     updateSendButton(true);
     input.value = '';
+    
+    // 显示流式进展
+    showStreamProgress();
 
     try {
       const response = await fetch('/api/send-message', {
@@ -273,14 +363,91 @@
           handleResult(result);
         }
       } else {
+        hideStreamProgress();
         showResult(result.error || '处理失败', 'error');
         updateSendButton(false);
       }
     } catch (error) {
+      hideStreamProgress();
       showResult(`发送失败：${error.message}`, 'error');
       updateSendButton(false);
     }
   };
+
+  /**
+   * 显示流式进展
+   */
+  function showStreamProgress() {
+    const project = window.chatConfig?.project || 'bydesign';
+    const steps = STREAM_STEPS[project] || STREAM_STEPS['bydesign'];
+    
+    // 获取或创建结果容器
+    let resultContainer = document.getElementById('chatResult');
+    
+    if (!resultContainer) {
+      const panel = document.getElementById('fabPanel');
+      if (!panel) return;
+      
+      resultContainer = document.createElement('div');
+      resultContainer.id = 'chatResult';
+      resultContainer.className = 'mb-4';
+      
+      const header = panel.querySelector('.border-b');
+      if (header && header.parentElement) {
+        header.parentElement.insertBefore(resultContainer, header.nextSibling);
+      } else {
+        panel.insertBefore(resultContainer, panel.firstChild);
+      }
+    }
+    
+    // 创建流式进展 HTML
+    resultContainer.innerHTML = `
+      <div class="stream-progress">
+        ${steps.map((step, index) => `
+          <div class="stream-step ${index === 0 ? 'active' : 'pending'}" id="stream-step-${index}">
+            <span class="step-icon">
+              ${index === 0 ? '<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>' : '○'}
+            </span>
+            <span>${step}</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    
+    // 流式更新步骤
+    let currentStep = 0;
+    
+    chatState.streamTimer = setInterval(() => {
+      if (currentStep < steps.length - 1) {
+        // 完成当前步骤
+        const currentEl = document.getElementById(`stream-step-${currentStep}`);
+        if (currentEl) {
+          currentEl.classList.remove('active');
+          currentEl.classList.add('completed');
+          currentEl.querySelector('.step-icon').innerHTML = '●';
+        }
+        
+        // 激活下一步骤
+        currentStep++;
+        const nextEl = document.getElementById(`stream-step-${currentStep}`);
+        if (nextEl) {
+          nextEl.classList.remove('pending');
+          nextEl.classList.add('active');
+          nextEl.querySelector('.step-icon').innerHTML = '<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>';
+        }
+      }
+    }, 800); // 每 800ms 更新一个步骤
+  }
+
+  /**
+   * 隐藏流式进展
+   */
+  function hideStreamProgress() {
+    if (chatState.streamTimer) {
+      clearInterval(chatState.streamTimer);
+      chatState.streamTimer = null;
+    }
+  }
 
   /**
    * 更新发送按钮状态
@@ -313,6 +480,8 @@
    * 处理结果
    */
   function handleResult(result) {
+    // 隐藏流式进展
+    hideStreamProgress();
     updateSendButton(false);
     chatState.isSending = false;
     
@@ -360,6 +529,7 @@
           if (result.data) {
             handleResult(result.data);
           } else {
+            hideStreamProgress();
             showResult('处理失败', 'error');
             updateSendButton(false);
             chatState.isSending = false;
@@ -367,6 +537,7 @@
         } else if (attempts >= maxAttempts) {
           clearInterval(chatState.pollTimer);
           chatState.polling = false;
+          hideStreamProgress();
           showResult('处理超时，请刷新页面查看结果', 'warning');
           updateSendButton(false);
           chatState.isSending = false;
