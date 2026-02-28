@@ -120,7 +120,10 @@
     
     const backdrop = document.createElement('div');
     backdrop.id = 'chatBackdrop';
-    backdrop.className = 'fixed inset-0 bg-black/20 backdrop-blur-sm z-[9999] opacity-0 pointer-events-none transition-opacity duration-300';
+    backdrop.className = 'fixed inset-0 bg-black/20 z-[9998] opacity-0 pointer-events-none transition-opacity duration-300';
+    // 只模糊背景，不模糊悬浮窗
+    backdrop.style.backdropFilter = 'blur(8px)';
+    backdrop.style.webkitBackdropFilter = 'blur(8px)';
     document.body.appendChild(backdrop);
     
     // 监听面板展开/关闭
@@ -128,6 +131,13 @@
     const toggleBtn = document.querySelector('[onclick="togglePanel()"]');
     
     if (panel && toggleBtn) {
+      // 确保悬浮窗在虚化层之上
+      const glassCard = panel.querySelector('.glass-card');
+      if (glassCard) {
+        glassCard.style.zIndex = '9999';
+        glassCard.style.position = 'relative';
+      }
+      
       // 使用 MutationObserver 监听面板的 hidden 类变化
       const observer = new MutationObserver(() => {
         if (panel.classList.contains('hidden')) {
