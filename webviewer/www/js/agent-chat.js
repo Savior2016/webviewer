@@ -172,6 +172,10 @@
       const glassCard = panel.querySelector('.glass-card');
       if (glassCard) {
         glassCard.classList.add('chat-panel-enhanced');
+        
+        // 减少 backdrop-filter 的模糊度，避免内部内容看起来模糊
+        glassCard.style.backdropFilter = 'blur(8px)';
+        glassCard.style.webkitBackdropFilter = 'blur(8px)';
       }
       
       // 获取主题色
