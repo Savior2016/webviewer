@@ -32,9 +32,9 @@
     .item-placed { border-left: 4px solid #10b981; background: linear-gradient(to right, #d1fae5, #f0fdf4); }
     .item-pending { border-left: 4px solid #f59e0b; background: linear-gradient(to right, #fef3c7, #fffbeb); }
     .item-done { border-left: 4px solid #3b82f6; background: linear-gradient(to right, #dbeafe, #eff6ff); }
-    .fab-button { position: fixed; bottom: 24px; right: 24px; z-index: 100; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .fab-button { position: fixed; bottom: 24px; right: 24px; z-index: 10000; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
     .fab-button:hover { transform: scale(1.1); }
-    .fab-panel { position: fixed; bottom: 100px; right: 24px; z-index: 99; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .fab-panel { position: fixed; bottom: 100px; right: 24px; z-index: 9999; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
     @media (max-width: 640px) {
       .fab-button { bottom: 16px; right: 16px; }
       .fab-panel { bottom: 90px; right: 16px; left: 16px; }

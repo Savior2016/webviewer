@@ -136,11 +136,17 @@
       // 确保悬浮窗在虚化层之上
       const glassCard = panel.querySelector('.glass-card');
       if (glassCard) {
-        glassCard.style.zIndex = '9999';
+        glassCard.style.zIndex = '10000';
         glassCard.style.position = 'relative';
         // 减少玻璃卡片的 backdrop-filter，避免内部内容模糊
         glassCard.style.backdropFilter = 'blur(4px)';
         glassCard.style.webkitBackdropFilter = 'blur(4px)';
+      }
+      
+      // 确保 fab-button 也在虚化层之上
+      const fabButton = document.querySelector('.fab-button');
+      if (fabButton) {
+        fabButton.style.zIndex = '10000';
       }
       
       // 使用 MutationObserver 监听面板的 hidden 类变化
@@ -181,6 +187,9 @@
     const glassCard = panel.querySelector('.glass-card');
     if (glassCard) {
       glassCard.classList.add('chat-panel-enhanced');
+      // 确保玻璃卡片在虚化层之上
+      glassCard.style.zIndex = '10000';
+      glassCard.style.position = 'relative';
     }
     
     // 获取主题色
