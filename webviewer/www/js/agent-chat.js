@@ -112,9 +112,13 @@
   }
 
   /**
-   * 添加背景虚化层
+   * 添加背景虚化层（仅在有 fabPanel 时）
    */
   function addBackdropBlur() {
+    // 检查是否有 fabPanel 元素，没有则不添加虚化层
+    const panel = document.getElementById('fabPanel');
+    if (!panel) return;
+    
     // 检查是否已存在虚化层
     if (document.getElementById('chatBackdrop')) return;
     
@@ -126,8 +130,6 @@
     backdrop.style.webkitBackdropFilter = 'blur(8px)';
     document.body.appendChild(backdrop);
     
-    // 监听面板展开/关闭
-    const panel = document.getElementById('fabPanel');
     const toggleBtn = document.querySelector('[onclick="togglePanel()"]');
     
     if (panel && toggleBtn) {
@@ -136,6 +138,9 @@
       if (glassCard) {
         glassCard.style.zIndex = '9999';
         glassCard.style.position = 'relative';
+        // 减少玻璃卡片的 backdrop-filter，避免内部内容模糊
+        glassCard.style.backdropFilter = 'blur(4px)';
+        glassCard.style.webkitBackdropFilter = 'blur(4px)';
       }
       
       // 使用 MutationObserver 监听面板的 hidden 类变化
@@ -167,149 +172,150 @@
    */
   function enhancePanelStyle() {
     const panel = document.getElementById('fabPanel');
-    if (panel) {
-      // 找到内部的玻璃卡片并添加悬浮样式类
-      const glassCard = panel.querySelector('.glass-card');
-      if (glassCard) {
-        glassCard.classList.add('chat-panel-enhanced');
-        
-        // 减少 backdrop-filter 的模糊度，避免内部内容看起来模糊
-        glassCard.style.backdropFilter = 'blur(8px)';
-        glassCard.style.webkitBackdropFilter = 'blur(8px)';
-      }
-      
-      // 获取主题色
-      const theme = getThemeColors();
-      
-      // 添加背景虚化层
-      addBackdropBlur();
-      
-      // 添加 CSS 样式
-      const style = document.createElement('style');
-      style.textContent = `
-        .chat-panel-enhanced {
-          background: ${theme.bgGradient} !important;
-          backdrop-filter: blur(20px) !important;
-          box-shadow: 
-            0 25px 50px -12px rgba(0, 0, 0, 0.15),
-            0 0 0 1px rgba(255, 255, 255, 0.6),
-            inset 0 1px 0 rgba(255, 255, 255, 0.8);
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          position: relative;
-        }
-        .chat-panel-enhanced::before {
-          content: '';
-          position: absolute;
-          inset: -1px;
-          border-radius: inherit;
-          padding: 1px;
-          background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.3) 100%);
-          -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-          -webkit-mask-composite: xor;
-          mask-composite: exclude;
-          pointer-events: none;
-          z-index: 10;
-        }
-        .chat-panel-enhanced:hover {
-          background: ${theme.bgGradientDark} !important;
-          box-shadow: 
-            0 35px 60px -12px rgba(0, 0, 0, 0.2),
-            0 0 0 1px rgba(255, 255, 255, 0.7),
-            inset 0 1px 0 rgba(255, 255, 255, 0.9);
-          transform: translateY(-3px) scale(1.01);
-        }
-        /* 流式进展样式 */
-        .stream-progress {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-        }
-        .stream-step {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 8px 12px;
-          border-radius: 8px;
-          font-size: 13px;
-          transition: all 0.3s ease;
-        }
-        .stream-step.pending {
-          background: rgba(255, 255, 255, 0.5);
-          color: #9ca3af;
-        }
-        .stream-step.active {
-          background: ${theme.accentGradient};
-          color: ${theme.accentColor};
-          font-weight: 500;
-        }
-        .stream-step.completed {
-          background: rgba(34, 197, 94, 0.1);
-          color: #22c55e;
-        }
-        .stream-step .step-icon {
-          width: 16px;
-          height: 16px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex-shrink: 0;
-        }
-        .stream-step.pending .step-icon {
-          opacity: 0.3;
-        }
-        .stream-step.active .step-icon {
-          animation: pulse 1.5s infinite;
-        }
-        @keyframes pulse {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.7; transform: scale(1.1); }
-        }
-        @keyframes typing {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.5; }
-        }
-        .typing-dot {
-          animation: typing 1.4s infinite;
-          width: 6px;
-          height: 6px;
-          background: currentColor;
-          border-radius: 50%;
-          display: inline-block;
-        }
-        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
-        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
-        /* 结果消息样式 - 使用主题色系 */
-        .chat-panel-enhanced .result-message {
-          backdrop-filter: blur(8px);
-          border-left: 3px solid;
-          background: ${theme.accentGradient};
-        }
-        .chat-panel-enhanced .result-success {
-          border-left-color: ${theme.borderLeftColor};
-          background: ${theme.accentGradient};
-        }
-        .chat-panel-enhanced .result-error {
-          border-left-color: #ef4444;
-          background: linear-gradient(135deg, rgba(239, 68, 68, 0.10) 0%, rgba(239, 68, 68, 0.04) 100%);
-        }
-        .chat-panel-enhanced .result-warning {
-          border-left-color: #f59e0b;
-          background: linear-gradient(135deg, rgba(245, 158, 11, 0.10) 0%, rgba(245, 158, 11, 0.04) 100%);
-        }
-        .chat-panel-enhanced .result-info {
-          border-left-color: ${theme.borderLeftColor};
-          background: ${theme.accentGradient};
-        }
-        @keyframes resultSlideIn {
-          from { opacity: 0; transform: translateX(-10px); }
-          to { opacity: 1; transform: translateX(0); }
-        }
-        .result-message {
-          animation: resultSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-      `;
-      document.head.appendChild(style);
+    if (!panel) {
+      // 没有悬浮窗元素，不执行增强（主页不需要）
+      return;
     }
+    
+    // 找到内部的玻璃卡片并添加悬浮样式类
+    const glassCard = panel.querySelector('.glass-card');
+    if (glassCard) {
+      glassCard.classList.add('chat-panel-enhanced');
+    }
+    
+    // 获取主题色
+    const theme = getThemeColors();
+    
+    // 添加背景虚化层
+    addBackdropBlur();
+    
+    // 添加 CSS 样式
+    const style = document.createElement('style');
+    style.textContent = `
+      .chat-panel-enhanced {
+        background: ${theme.bgGradient} !important;
+        backdrop-filter: blur(4px) !important;
+        -webkit-backdrop-filter: blur(4px) !important;
+        box-shadow: 
+          0 25px 50px -12px rgba(0, 0, 0, 0.15),
+          0 0 0 1px rgba(255, 255, 255, 0.6),
+          inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+      }
+      .chat-panel-enhanced::before {
+        content: '';
+        position: absolute;
+        inset: -1px;
+        border-radius: inherit;
+        padding: 1px;
+        background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.3) 100%);
+        -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+        pointer-events: none;
+        z-index: 10;
+      }
+      .chat-panel-enhanced:hover {
+        background: ${theme.bgGradientDark} !important;
+        box-shadow: 
+          0 35px 60px -12px rgba(0, 0, 0, 0.2),
+          0 0 0 1px rgba(255, 255, 255, 0.7),
+          inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        transform: translateY(-3px) scale(1.01);
+      }
+      /* 流式进展样式 */
+      .stream-progress {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .stream-step {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 8px;
+        font-size: 13px;
+        transition: all 0.3s ease;
+      }
+      .stream-step.pending {
+        background: rgba(255, 255, 255, 0.5);
+        color: #9ca3af;
+      }
+      .stream-step.active {
+        background: ${theme.accentGradient};
+        color: ${theme.accentColor};
+        font-weight: 500;
+      }
+      .stream-step.completed {
+        background: rgba(34, 197, 94, 0.1);
+        color: #22c55e;
+      }
+      .stream-step .step-icon {
+        width: 16px;
+        height: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .stream-step.pending .step-icon {
+        opacity: 0.3;
+      }
+      .stream-step.active .step-icon {
+        animation: pulse 1.5s infinite;
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.7; transform: scale(1.1); }
+      }
+      @keyframes typing {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+      }
+      .typing-dot {
+        animation: typing 1.4s infinite;
+        width: 6px;
+        height: 6px;
+        background: currentColor;
+        border-radius: 50%;
+        display: inline-block;
+      }
+      .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+      .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+      /* 结果消息样式 - 使用主题色系 */
+      .chat-panel-enhanced .result-message {
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        border-left: 3px solid;
+        background: ${theme.accentGradient};
+      }
+      .chat-panel-enhanced .result-success {
+        border-left-color: ${theme.borderLeftColor};
+        background: ${theme.accentGradient};
+      }
+      .chat-panel-enhanced .result-error {
+        border-left-color: #ef4444;
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.10) 0%, rgba(239, 68, 68, 0.04) 100%);
+      }
+      .chat-panel-enhanced .result-warning {
+        border-left-color: #f59e0b;
+        background: linear-gradient(135deg, rgba(245, 158, 11, 0.10) 0%, rgba(245, 158, 11, 0.04) 100%);
+      }
+      .chat-panel-enhanced .result-info {
+        border-left-color: ${theme.borderLeftColor};
+        background: ${theme.accentGradient};
+      }
+      @keyframes resultSlideIn {
+        from { opacity: 0; transform: translateX(-10px); }
+        to { opacity: 1; transform: translateX(0); }
+      }
+      .result-message {
+        animation: resultSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+    `;
+    document.head.appendChild(style);
   }
 
   /**
@@ -338,9 +344,13 @@
   };
 
   /**
-   * 发送消息
+   * 发送消息（仅用于子页面，主页有自己的 sendMessage）
    */
   window.sendMessage = async function() {
+    // 检查是否有 fabPanel，没有则说明是主页，不处理
+    const panel = document.getElementById('fabPanel');
+    if (!panel) return;
+    
     if (chatState.isSending) return;
     
     const input = document.getElementById('messageInput');

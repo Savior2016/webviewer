@@ -289,3 +289,160 @@ input:focus, textarea:focus, select:focus {
   animation: spin 0.8s linear infinite;
   z-index: 20;
 }
+
+/* 悬浮按钮 - 确保始终悬浮 */
+.fab-button {
+  position: fixed !important;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999 !important;
+  animation: fabFloat 3s ease-in-out infinite;
+}
+
+@keyframes fabFloat {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@media (max-width: 640px) {
+  .fab-button {
+    bottom: 16px !important;
+    right: 16px !important;
+  }
+}
+
+/* 电子显示屏效果 - 结果展示 */
+.led-display {
+  background: linear-gradient(180deg, #1a1a2e 0%, #0f0f1a 100%);
+  border: 3px solid #333;
+  border-radius: 12px;
+  box-shadow: 
+    0 0 20px rgba(0, 255, 136, 0.3),
+    inset 0 0 30px rgba(0, 0, 0, 0.8),
+    0 0 0 2px #222,
+    0 10px 30px rgba(0, 0, 0, 0.5);
+  position: relative;
+  overflow: hidden;
+}
+
+.led-display::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(0, 255, 136, 0.5), transparent);
+  animation: ledScan 2s linear infinite;
+}
+
+@keyframes ledScan {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100vh);
+  }
+}
+
+.led-display .led-text {
+  color: #00ff88;
+  text-shadow: 
+    0 0 5px #00ff88,
+    0 0 10px #00ff88,
+    0 0 20px #00ff88,
+    0 0 40px #00ff44;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  animation: ledFlicker 0.1s infinite;
+}
+
+@keyframes ledFlicker {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+
+.led-display.success {
+  border-color: #00ff88;
+  box-shadow: 
+    0 0 30px rgba(0, 255, 136, 0.5),
+    inset 0 0 30px rgba(0, 0, 0, 0.8),
+    0 0 0 2px #00ff88,
+    0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.led-display.error {
+  border-color: #ff4444;
+  box-shadow: 
+    0 0 30px rgba(255, 68, 68, 0.5),
+    inset 0 0 30px rgba(0, 0, 0, 0.8),
+    0 0 0 2px #ff4444,
+    0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.led-display.error .led-text {
+  color: #ff4444;
+  text-shadow: 
+    0 0 5px #ff4444,
+    0 0 10px #ff4444,
+    0 0 20px #ff4444,
+    0 0 40px #ff2222;
+}
+
+.led-display.warning {
+  border-color: #ffaa00;
+  box-shadow: 
+    0 0 30px rgba(255, 170, 0, 0.5),
+    inset 0 0 30px rgba(0, 0, 0, 0.8),
+    0 0 0 2px #ffaa00,
+    0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.led-display.warning .led-text {
+  color: #ffaa00;
+  text-shadow: 
+    0 0 5px #ffaa00,
+    0 0 10px #ffaa00,
+    0 0 20px #ffaa00,
+    0 0 40px #ff8800;
+}
+
+.led-display.info {
+  border-color: #00aaff;
+  box-shadow: 
+    0 0 30px rgba(0, 170, 255, 0.5),
+    inset 0 0 30px rgba(0, 0, 0, 0.8),
+    0 0 0 2px #00aaff,
+    0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.led-display.info .led-text {
+  color: #00aaff;
+  text-shadow: 
+    0 0 5px #00aaff,
+    0 0 10px #00aaff,
+    0 0 20px #00aaff,
+    0 0 40px #0088ff;
+}
+
+/* LED 点阵效果 */
+.led-dots {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(rgba(0, 255, 136, 0.1) 1px, transparent 1px);
+  background-size: 3px 3px;
+  pointer-events: none;
+  opacity: 0.3;
+}

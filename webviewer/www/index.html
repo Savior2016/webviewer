@@ -26,7 +26,8 @@
     }
     .tool-card {
       background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(20px);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
       border: 1px solid rgba(255, 255, 255, 0.2);
       transition: all 0.3s ease;
     }
@@ -85,7 +86,7 @@
 
     <!-- Chat Interface -->
     <div class="max-w-3xl mx-auto mb-10 slide-in">
-      <div class="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden">
+      <div class="bg-white/95 backdrop-blur-[4px] rounded-3xl shadow-2xl overflow-hidden">
         <!-- Chat Header -->
         <div class="bg-gradient-to-r from-purple-500 to-pink-500 px-4 sm:px-6 py-4">
           <div class="flex items-center justify-between">
