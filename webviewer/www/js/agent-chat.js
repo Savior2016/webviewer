@@ -39,14 +39,53 @@
     // 加载保存的提示词
     loadSavedPrompt();
     
-    // 添加面板悬浮效果
+    // 添加面板悬浮效果和主题色
     enhancePanelStyle();
     
     console.log(`[AgentChat] 已初始化，项目：${chatConfig.project}`);
   };
 
   /**
-   * 增强面板样式（悬浮效果）
+   * 获取项目主题色配置
+   */
+  function getThemeColors() {
+    const project = window.chatConfig?.project || 'bydesign';
+    
+    const themes = {
+      'bydesign': {
+        // 蓝色主题（已读不回）
+        bgGradient: 'linear-gradient(135deg, rgba(219, 234, 254, 0.95) 0%, rgba(191, 219, 254, 0.92) 50%, rgba(224, 242, 254, 0.95) 100%)',
+        bgGradientDark: 'linear-gradient(135deg, rgba(219, 234, 254, 0.98) 0%, rgba(191, 219, 254, 0.96) 50%, rgba(224, 242, 254, 0.98) 100%)',
+        accentColor: '#3b82f6',
+        accentLight: '#dbeafe',
+        accentGradient: 'linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(59, 130, 246, 0.04) 100%)',
+        borderLeftColor: '#3b82f6'
+      },
+      'cherry_pick': {
+        // 紫色主题（一搬不丢）
+        bgGradient: 'linear-gradient(135deg, rgba(243, 232, 255, 0.95) 0%, rgba(233, 213, 255, 0.92) 50%, rgba(245, 243, 255, 0.95) 100%)',
+        bgGradientDark: 'linear-gradient(135deg, rgba(243, 232, 255, 0.98) 0%, rgba(233, 213, 255, 0.96) 50%, rgba(245, 243, 255, 0.98) 100%)',
+        accentColor: '#a855f7',
+        accentLight: '#f3e8ff',
+        accentGradient: 'linear-gradient(135deg, rgba(168, 85, 247, 0.12) 0%, rgba(168, 85, 247, 0.04) 100%)',
+        borderLeftColor: '#a855f7'
+      },
+      'momhand': {
+        // 绿色主题（妈妈的手）
+        bgGradient: 'linear-gradient(135deg, rgba(220, 252, 231, 0.95) 0%, rgba(187, 247, 208, 0.92) 50%, rgba(228, 255, 244, 0.95) 100%)',
+        bgGradientDark: 'linear-gradient(135deg, rgba(220, 252, 231, 0.98) 0%, rgba(187, 247, 208, 0.96) 50%, rgba(228, 255, 244, 0.98) 100%)',
+        accentColor: '#22c55e',
+        accentLight: '#dcfce7',
+        accentGradient: 'linear-gradient(135deg, rgba(34, 197, 94, 0.12) 0%, rgba(34, 197, 94, 0.04) 100%)',
+        borderLeftColor: '#22c55e'
+      }
+    };
+    
+    return themes[project] || themes['bydesign'];
+  }
+
+  /**
+   * 增强面板样式（悬浮效果 + 主题色）
    */
   function enhancePanelStyle() {
     const panel = document.getElementById('fabPanel');
@@ -57,18 +96,19 @@
         glassCard.classList.add('chat-panel-enhanced');
       }
       
-      // 根据项目配置获取主色调
-      const colors = window.chatConfig?.colors || DEFAULT_CONFIG.colors;
-      const primaryColor = colors.primaryText?.replace('text-', '') || 'blue-500';
+      // 获取主题色
+      const theme = getThemeColors();
       
       // 添加 CSS 样式
       const style = document.createElement('style');
       style.textContent = `
         .chat-panel-enhanced {
+          background: ${theme.bgGradient} !important;
+          backdrop-filter: blur(20px) !important;
           box-shadow: 
-            0 25px 50px -12px rgba(0, 0, 0, 0.25),
-            0 0 0 1px rgba(255, 255, 255, 0.5),
-            inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+            0 25px 50px -12px rgba(0, 0, 0, 0.15),
+            0 0 0 1px rgba(255, 255, 255, 0.6),
+            inset 0 1px 0 rgba(255, 255, 255, 0.8);
           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
           position: relative;
         }
@@ -78,7 +118,7 @@
           inset: -1px;
           border-radius: inherit;
           padding: 1px;
-          background: linear-gradient(135deg, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.2) 100%);
+          background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.3) 100%);
           -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
           -webkit-mask-composite: xor;
           mask-composite: exclude;
@@ -86,31 +126,34 @@
           z-index: 10;
         }
         .chat-panel-enhanced:hover {
+          background: ${theme.bgGradientDark} !important;
           box-shadow: 
-            0 35px 60px -12px rgba(0, 0, 0, 0.3),
-            0 0 0 1px rgba(255, 255, 255, 0.6),
-            inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+            0 35px 60px -12px rgba(0, 0, 0, 0.2),
+            0 0 0 1px rgba(255, 255, 255, 0.7),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
           transform: translateY(-3px) scale(1.01);
         }
+        /* 结果消息样式 - 使用主题色系 */
         .chat-panel-enhanced .result-message {
           backdrop-filter: blur(8px);
           border-left: 3px solid;
+          background: ${theme.accentGradient};
         }
         .chat-panel-enhanced .result-success {
-          background: linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(34, 197, 94, 0.02) 100%);
-          border-left-color: #22c55e;
+          border-left-color: ${theme.borderLeftColor};
+          background: ${theme.accentGradient};
         }
         .chat-panel-enhanced .result-error {
-          background: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(239, 68, 68, 0.02) 100%);
           border-left-color: #ef4444;
+          background: linear-gradient(135deg, rgba(239, 68, 68, 0.10) 0%, rgba(239, 68, 68, 0.04) 100%);
         }
         .chat-panel-enhanced .result-warning {
-          background: linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(245, 158, 11, 0.02) 100%);
           border-left-color: #f59e0b;
+          background: linear-gradient(135deg, rgba(245, 158, 11, 0.10) 0%, rgba(245, 158, 11, 0.04) 100%);
         }
         .chat-panel-enhanced .result-info {
-          background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(59, 130, 246, 0.02) 100%);
-          border-left-color: #3b82f6;
+          border-left-color: ${theme.borderLeftColor};
+          background: ${theme.accentGradient};
         }
         @keyframes resultSlideIn {
           from { opacity: 0; transform: translateX(-10px); }
@@ -291,7 +334,7 @@
   }
 
   /**
-   * 显示结果消息（LED 显示屏效果）
+   * 显示结果消息（在面板内）
    */
   function showResult(text, type = 'info') {
     // 获取或创建结果容器（在面板内）
@@ -318,46 +361,35 @@
       }
     }
     
-    const typeMap = {
-      'success': { class: 'success', icon: '✅' },
-      'error': { class: 'error', icon: '❌' },
-      'warning': { class: 'warning', icon: '⚠️' },
-      'info': { class: 'info', icon: 'ℹ️' }
-    };
-
-    const typeInfo = typeMap[type] || typeMap.info;
-    
     // 只保留最新一条消息（移除旧的）
     resultContainer.innerHTML = '';
     
-    // 创建 LED 显示屏效果的消息
+    // 创建新的结果消息
     const messageEl = document.createElement('div');
-    messageEl.className = `led-display ${typeInfo.class} rounded-xl overflow-hidden`;
+    messageEl.className = `result-message result-${type} border rounded-xl px-4 py-3 shadow-sm`;
+    
+    const icons = {
+      'success': '✅',
+      'error': '❌',
+      'warning': '⚠️',
+      'info': 'ℹ️'
+    };
+    
     messageEl.innerHTML = `
-      <div class="led-dots"></div>
-      <div class="px-5 py-4 relative z-10">
-        <div class="flex items-start gap-3">
-          <span class="text-lg flex-shrink-0">${typeInfo.icon}</span>
-          <div class="flex-1 min-w-0">
-            <p class="led-text text-sm break-words">${escapeHtml(text)}</p>
-          </div>
-          <button onclick="this.parentElement.parentElement.parentElement.remove()" class="text-gray-400 hover:text-white flex-shrink-0 transition-colors p-0.5 z-20 relative">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-            </svg>
-          </button>
+      <div class="flex items-start gap-3">
+        <span class="text-lg flex-shrink-0">${icons[type]}</span>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-medium text-gray-700 break-words">${text}</p>
         </div>
+        <button onclick="this.parentElement.parentElement.remove()" class="text-gray-400 hover:text-gray-600 flex-shrink-0 transition-colors p-0.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
       </div>
     `;
     
     resultContainer.appendChild(messageEl);
-    
-    // 3 秒后自动消失
-    setTimeout(() => {
-      if (messageEl.parentElement) {
-        messageEl.parentElement.remove();
-      }
-    }, 5000);
   }
 
   /**
@@ -474,14 +506,5 @@
     document.addEventListener('DOMContentLoaded', window.initSettingsModal);
   } else {
     window.initSettingsModal();
-  }
-  
-  /**
-   * HTML 转义辅助函数
-   */
-  function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
   }
 })();
