@@ -167,7 +167,15 @@
 
     <!-- Footer -->
     <footer class="text-center py-6 border-t border-white/10">
-      <p class="text-gray-400 text-sm">🎯 让生活更有序 · Powered by OpenClaw</p>
+      <div class="flex items-center justify-center gap-4 mb-2">
+        <p class="text-gray-400 text-sm">🎯 让生活更有序 · Powered by OpenClaw</p>
+        <span class="text-gray-500">·</span>
+        <button onclick="showVersion()" class="text-gray-400 hover:text-purple-400 text-sm transition-colors flex items-center gap-1">
+          <span>📋</span>
+          <span>版本</span>
+        </button>
+      </div>
+      <p class="text-gray-500 text-xs">v1.0.0 · Agent: Dummy 🧪</p>
     </footer>
   </div>
 
@@ -219,6 +227,76 @@
             💾 保存设置
           </button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Version Modal -->
+  <div id="versionModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
+      <!-- Modal Header -->
+      <div class="bg-gradient-to-r from-purple-500 to-pink-500 px-6 py-4 flex items-center justify-between">
+        <h2 class="text-xl font-bold text-white flex items-center gap-2">
+          <span>📋</span>
+          <span>版本信息</span>
+        </h2>
+        <button onclick="hideVersion()" class="text-white hover:text-purple-200 transition-colors text-2xl">✕</button>
+      </div>
+      
+      <!-- Modal Body -->
+      <div class="p-6 overflow-y-auto max-h-[60vh]">
+        <div class="text-center mb-6">
+          <div class="text-5xl mb-3">🧪</div>
+          <h3 class="text-2xl font-bold text-gray-800">Dummy 的小弟们</h3>
+          <p class="text-sm text-gray-500 mt-1">Dummy's Minions · 你的生活管理工具集</p>
+          <div class="inline-block mt-4 px-4 py-2 bg-purple-100 text-purple-700 rounded-full text-sm font-semibold">
+            v1.0.0
+          </div>
+        </div>
+        
+        <div class="border-t border-gray-200 pt-4">
+          <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+            <span>✨</span> 更新日志
+          </h4>
+          <div class="space-y-4">
+            <div class="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-4 border border-purple-100">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="text-lg">🎉</span>
+                <span class="font-semibold text-purple-800">v1.0.0</span>
+                <span class="text-xs text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full">2026-02-28</span>
+              </div>
+              <p class="text-sm text-purple-700 mb-3">初始版本正式发布</p>
+              <ul class="text-xs text-purple-600 space-y-1">
+                <li>✅ WebViewer 服务 - HTTPS 网站服务</li>
+                <li>✅ OpenClaw Agent 集成 - 智能消息处理</li>
+                <li>✅ By Design (已读不回) - 出行管理</li>
+                <li>✅ Cherry Pick (一搬不丢) - 搬家物品管理</li>
+                <li>✅ Momhand (妈妈的手) - 物品位置管理</li>
+                <li>✅ 统一首页 - 工具索引页</li>
+                <li>✅ systemd 服务 - 开机自启动</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        
+        <div class="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
+          <h4 class="text-sm font-semibold text-gray-700 mb-2">🔧 技术栈</h4>
+          <div class="flex flex-wrap gap-2">
+            <span class="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">Python 3</span>
+            <span class="text-xs px-2 py-1 bg-green-100 text-green-700 rounded">asyncio</span>
+            <span class="text-xs px-2 py-1 bg-yellow-100 text-yellow-700 rounded">HTTPS</span>
+            <span class="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded">OpenClaw</span>
+            <span class="text-xs px-2 py-1 bg-pink-100 text-pink-700 rounded">TailwindCSS</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Modal Footer -->
+      <div class="border-t border-gray-200 px-6 py-4 flex items-center justify-between bg-gray-50">
+        <p class="text-xs text-gray-500">Powered by OpenClaw · Agent: Dummy 🧪</p>
+        <button onclick="hideVersion()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium hover:shadow-lg transition-all">
+          关闭
+        </button>
       </div>
     </div>
   </div>
@@ -300,10 +378,27 @@
       }
     }
     
+    // 版本相关函数
+    function showVersion() {
+      const modal = document.getElementById('versionModal');
+      modal.classList.remove('hidden');
+    }
+    
+    function hideVersion() {
+      const modal = document.getElementById('versionModal');
+      modal.classList.add('hidden');
+    }
+    
     // 点击模态框外部关闭
     document.getElementById('settingsModal').addEventListener('click', function(e) {
       if (e.target === this) {
         hideSettings();
+      }
+    });
+    
+    document.getElementById('versionModal').addEventListener('click', function(e) {
+      if (e.target === this) {
+        hideVersion();
       }
     });
 
