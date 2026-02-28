@@ -51,8 +51,11 @@
   function enhancePanelStyle() {
     const panel = document.getElementById('fabPanel');
     if (panel) {
-      // 添加悬浮样式类
-      panel.classList.add('chat-panel-enhanced');
+      // 找到内部的玻璃卡片并添加悬浮样式类
+      const glassCard = panel.querySelector('.glass-card');
+      if (glassCard) {
+        glassCard.classList.add('chat-panel-enhanced');
+      }
       
       // 根据项目配置获取主色调
       const colors = window.chatConfig?.colors || DEFAULT_CONFIG.colors;
@@ -65,7 +68,7 @@
           box-shadow: 
             0 25px 50px -12px rgba(0, 0, 0, 0.25),
             0 0 0 1px rgba(255, 255, 255, 0.5),
-            inset 0 1px 0 rgba(255, 255, 255, 0.8);
+            inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
           position: relative;
         }
@@ -80,12 +83,13 @@
           -webkit-mask-composite: xor;
           mask-composite: exclude;
           pointer-events: none;
+          z-index: 10;
         }
         .chat-panel-enhanced:hover {
           box-shadow: 
             0 35px 60px -12px rgba(0, 0, 0, 0.3),
             0 0 0 1px rgba(255, 255, 255, 0.6),
-            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+            inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
           transform: translateY(-3px) scale(1.01);
         }
         .chat-panel-enhanced .result-message {
@@ -287,7 +291,7 @@
   }
 
   /**
-   * 显示结果消息（在面板内）
+   * 显示结果消息（LED 显示屏效果）
    */
   function showResult(text, type = 'info') {
     // 获取或创建结果容器（在面板内）
@@ -303,7 +307,7 @@
       
       resultContainer = document.createElement('div');
       resultContainer.id = 'chatResult';
-      resultContainer.className = 'mb-4 space-y-2';
+      resultContainer.className = 'mb-4';
       
       // 插入到面板的开头（标题下方）
       const header = panel.querySelector('.border-b');
@@ -314,41 +318,46 @@
       }
     }
     
-    const typeClasses = {
-      'success': 'result-success',
-      'error': 'result-error',
-      'warning': 'result-warning',
-      'info': 'result-info'
+    const typeMap = {
+      'success': { class: 'success', icon: '✅' },
+      'error': { class: 'error', icon: '❌' },
+      'warning': { class: 'warning', icon: '⚠️' },
+      'info': { class: 'info', icon: 'ℹ️' }
     };
 
-    const icons = {
-      'success': '✅',
-      'error': '❌',
-      'warning': '⚠️',
-      'info': 'ℹ️'
-    };
-
+    const typeInfo = typeMap[type] || typeMap.info;
+    
     // 只保留最新一条消息（移除旧的）
     resultContainer.innerHTML = '';
     
-    // 创建新的结果消息
+    // 创建 LED 显示屏效果的消息
     const messageEl = document.createElement('div');
-    messageEl.className = `result-message ${typeClasses[type]} border rounded-xl px-4 py-3 shadow-sm`;
+    messageEl.className = `led-display ${typeInfo.class} rounded-xl overflow-hidden`;
     messageEl.innerHTML = `
-      <div class="flex items-start gap-3">
-        <span class="text-lg flex-shrink-0">${icons[type]}</span>
-        <div class="flex-1 min-w-0">
-          <p class="text-sm font-medium text-gray-700 break-words">${text}</p>
+      <div class="led-dots"></div>
+      <div class="px-5 py-4 relative z-10">
+        <div class="flex items-start gap-3">
+          <span class="text-lg flex-shrink-0">${typeInfo.icon}</span>
+          <div class="flex-1 min-w-0">
+            <p class="led-text text-sm break-words">${escapeHtml(text)}</p>
+          </div>
+          <button onclick="this.parentElement.parentElement.parentElement.remove()" class="text-gray-400 hover:text-white flex-shrink-0 transition-colors p-0.5 z-20 relative">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
         </div>
-        <button onclick="this.parentElement.parentElement.remove()" class="text-gray-400 hover:text-gray-600 flex-shrink-0 transition-colors p-0.5">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-          </svg>
-        </button>
       </div>
     `;
     
     resultContainer.appendChild(messageEl);
+    
+    // 3 秒后自动消失
+    setTimeout(() => {
+      if (messageEl.parentElement) {
+        messageEl.parentElement.remove();
+      }
+    }, 5000);
   }
 
   /**
@@ -465,5 +474,14 @@
     document.addEventListener('DOMContentLoaded', window.initSettingsModal);
   } else {
     window.initSettingsModal();
+  }
+  
+  /**
+   * HTML 转义辅助函数
+   */
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
 })();
