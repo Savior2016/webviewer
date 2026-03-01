@@ -180,6 +180,39 @@ class MomhandManager:
         conn.commit()
         conn.close()
         return self.get_item_by_id(item_id)
+    
+    def update_item(self, item_id, updates):
+        """更新物品信息"""
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        # 构建动态更新语句
+        set_clauses = []
+        values = []
+        
+        for key, value in updates.items():
+            if key in ['name', 'type', 'photo', 'usage', 'purchase_date', 'price', 'production_date', 'expiry_date', 'location']:
+                set_clauses.append(f"{key} = ?")
+                values.append(value)
+        
+        if not set_clauses:
+            conn.close()
+            return None
+        
+        set_clauses.append("updated_at = CURRENT_TIMESTAMP")
+        
+        sql = f'''
+            UPDATE items 
+            SET {', '.join(set_clauses)}
+            WHERE id = ?
+        '''
+        values.append(item_id)
+        
+        cursor.execute(sql, values)
+        conn.commit()
+        conn.close()
+        
+        return self.get_item_by_id(item_id)
 
 # 全局实例
 manager = MomhandManager()
