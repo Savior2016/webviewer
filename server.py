@@ -950,6 +950,7 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
         """后台处理 Siri Dream 消息"""
         import subprocess
         import re
+        import json
         
         try:
             import sys
@@ -975,19 +976,29 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
             output = result.stdout + result.stderr
             
-            # 提取 JSON
-            json_match = re.search(r'\{.*\}', output, re.DOTALL)
+            # 清理输出，提取有效内容
+            output = output.strip()
+            
+            # 尝试提取 JSON（如果有）
+            json_match = re.search(r'\{[\s\S]*\}', output)
             
             if json_match:
                 try:
                     result_data = json.loads(json_match.group(0))
-                    manager['update_message_status'](message_id, 'completed', result_data)
+                    # 如果解析成功，检查是否有 message 字段
+                    if isinstance(result_data, dict) and 'message' in result_data:
+                        manager['update_message_status'](message_id, 'completed', result_data)
+                    else:
+                        manager['update_message_status'](message_id, 'completed', {'message': output})
                     print(f"✅ Siri Dream 处理完成：{message_id}")
-                except json.JSONDecodeError:
-                    manager['update_message_status'](message_id, 'completed', {"message": output.strip()})
-                    print(f"⚠️ Siri Dream 无 JSON 返回：{message_id}")
+                except json.JSONDecodeError as e:
+                    # JSON 解析失败，使用纯文本
+                    manager['update_message_status'](message_id, 'completed', {'message': output})
+                    print(f"⚠️ Siri Dream JSON 解析失败，使用纯文本：{message_id}")
             else:
-                manager['update_message_status'](message_id, 'completed', {"message": output.strip()})
+                # 没有 JSON，使用纯文本
+                manager['update_message_status'](message_id, 'completed', {'message': output})
+                print(f"✅ Siri Dream 处理完成（纯文本）：{message_id}")
         
         except subprocess.TimeoutExpired:
             manager['update_message_status'](message_id, 'failed', {"error": "处理超时"})

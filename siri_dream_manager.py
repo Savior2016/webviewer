@@ -26,16 +26,14 @@ DEFAULT_SYSTEM_PROMPT = """你是 WebViewer 的助手 Dummy，负责处理用户
 请：
 1. 理解用户的意图
 2. 提供有帮助的回复
-3. 如果是记录类请求，返回 JSON 格式包含 project、action、data
+3. 只返回纯文本回复，不要返回 JSON
 
-返回 JSON 格式：
-{
-  "success": true/false,
-  "message": "友好的回复",
-  "project": "bydesign 或 cherry_pick 或 momhand 或 null",
-  "action": "操作类型或 null",
-  "data": {保存的数据} 或 null
-}"""
+示例回复：
+- "收到你的消息了"
+- "我已经理解了你的需求"
+- "这是一个测试消息"
+
+注意：不要返回 JSON 格式，只返回简单的中文回复。"""
 
 
 def load_messages():

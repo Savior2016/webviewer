@@ -1,5 +1,48 @@
 [
   {
+    "id": "eedcc63b-93b7-4cb1-945b-dfd2b8ddd547",
+    "text": "你好",
+    "source": "api",
+    "timestamp": 1772365905,
+    "created_at": "2026-03-01 19:51:45",
+    "status": "failed",
+    "result": {
+      "error": "'\\n  \"success\"'"
+    },
+    "metadata": {
+      "source": "web"
+    }
+  },
+  {
+    "id": "4ca7c726-8a0b-479b-9661-062d73e5a9a5",
+    "text": "要处理的消息内容",
+    "source": "api",
+    "timestamp": 1772365894,
+    "created_at": "2026-03-01 19:51:34",
+    "status": "failed",
+    "result": {
+      "error": "'\\n  \"success\"'"
+    },
+    "metadata": {
+      "source": "app",
+      "user": "username"
+    }
+  },
+  {
+    "id": "420e11e1-2fb7-4c0d-b5c1-bfd801ceb448",
+    "text": "新消息测试",
+    "source": "api",
+    "timestamp": 1772365610,
+    "created_at": "2026-03-01 19:46:50",
+    "status": "failed",
+    "result": {
+      "error": "'\\n  \"success\"'"
+    },
+    "metadata": {
+      "source": "web"
+    }
+  },
+  {
     "id": "0a341cbb-79d4-4e7f-9642-bddd5c529293",
     "text": "要处理的消息内容",
     "source": "api",
