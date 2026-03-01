@@ -948,6 +948,9 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
     
     def _process_siri_dream_message(self, message_id: str, text: str):
         """后台处理 Siri Dream 消息"""
+        import subprocess
+        import re
+        
         try:
             import sys
             sys.path.insert(0, "/root/.openclaw/workspace")
@@ -962,7 +965,6 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
             full_prompt = system_prompt.format(message=text)
             
             # 调用 OpenClaw Agent
-            import subprocess
             cmd = [
                 '/root/.nvm/versions/node/v22.22.0/bin/openclaw',
                 'agent',
@@ -974,13 +976,16 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
             output = result.stdout + result.stderr
             
             # 提取 JSON
-            import re
             json_match = re.search(r'\{.*\}', output, re.DOTALL)
             
             if json_match:
-                result_data = json.loads(json_match.group(0))
-                manager['update_message_status'](message_id, 'completed', result_data)
-                print(f"✅ Siri Dream 处理完成：{message_id}")
+                try:
+                    result_data = json.loads(json_match.group(0))
+                    manager['update_message_status'](message_id, 'completed', result_data)
+                    print(f"✅ Siri Dream 处理完成：{message_id}")
+                except json.JSONDecodeError:
+                    manager['update_message_status'](message_id, 'completed', {"message": output.strip()})
+                    print(f"⚠️ Siri Dream 无 JSON 返回：{message_id}")
             else:
                 manager['update_message_status'](message_id, 'completed', {"message": output.strip()})
         
