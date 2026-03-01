@@ -60,3 +60,8 @@ temp/
 
 # Settings (optional)
 # data/settings.json
+
+# Environment variables (contains secrets)
+.env
+.env.local
+.env.*.local

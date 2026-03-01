@@ -60,12 +60,24 @@ class WebViewerMessageHandler:
         
         return result_data
     
-    def send_to_feishu(self, message: str, user_open_id: str = "ou_67455f002e1316b6b05e4f3020ae2ff5"):
-        """通过 Feishu API 发送消息"""
+    def send_to_feishu(self, message: str, user_open_id: str = None):
+        """通过 Feishu API 发送消息
+        
+        注意：APP_ID 和 APP_SECRET 应从环境变量或配置文件中读取
+        不要硬编码在代码中！
+        
+        示例：
+            export FEISHU_APP_ID="your_app_id"
+            export FEISHU_APP_SECRET="your_app_secret"
+        """
         import requests
         
-        APP_ID = "cli_a9f6713611785bd7"
-        APP_SECRET = "LZXIXtcD0p2k3fZ2oOO7GbiXCZPCT76L"
+        # 从环境变量读取（安全做法）
+        APP_ID = os.getenv("FEISHU_APP_ID", "")
+        APP_SECRET = os.getenv("FEISHU_APP_SECRET", "")
+        
+        if not APP_ID or not APP_SECRET:
+            raise ValueError("Feishu APP_ID 和 APP_SECRET 未配置，请设置环境变量")
         
         # 获取 token
         token_response = requests.post(
