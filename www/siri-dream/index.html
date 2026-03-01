@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Siri 的葳来 - SiriWei</title>
+  <title>Siri 的尉来 - SiriFuture</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/transitions.css">
@@ -33,6 +33,8 @@
     .status-failed { border-left: 4px solid #ef4444; }
     .api-card { background: linear-gradient(135deg, #1e293b, #334155); }
     .code-block { background: #0f172a; color: #e2e8f0; padding: 1rem; border-radius: 0.5rem; font-family: 'Monaco', 'Consolas', monospace; font-size: 0.875rem; overflow-x: auto; }
+    .new-message { animation: highlight 2s ease-out; }
+    @keyframes highlight { 0% { background-color: rgba(59, 130, 246, 0.3); } 100% { background-color: transparent; } }
   </style>
 </head>
 <body class="gradient-bg min-h-screen pb-40 sm:pb-32">
@@ -44,41 +46,12 @@
   <div class="relative max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
     <header class="text-center mb-8">
       <div class="inline-block mb-4"><div class="text-5xl sm:text-6xl floating">🤖</div></div>
-      <h1 class="text-3xl sm:text-4xl font-extrabold text-white mb-2">Siri 的葳来</h1>
-      <p class="text-blue-100 text-base sm:text-lg font-light mb-3">SiriWei</p>
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-white mb-2">Siri 的尉来</h1>
+      <p class="text-blue-100 text-base sm:text-lg font-light mb-3">SiriFuture</p>
       <div class="w-16 h-1 bg-gradient-to-r from-blue-400 to-purple-400 mx-auto rounded-full"></div>
       <p class="text-blue-200/70 text-xs sm:text-sm mt-3">Siri 会的我都会啊，我会的 Siri 不会啊</p>
       <a href="/" class="inline-flex items-center gap-2 text-blue-200 hover:text-white transition-colors mt-4 text-sm"><span>←</span> 返回首页</a>
     </header>
-
-    <!-- API 信息卡片 -->
-    <div class="api-card rounded-2xl sm:rounded-3xl p-4 sm:p-6 mb-6 text-white">
-      <div class="flex items-center gap-3 mb-4">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-xl">🔌</div>
-        <h2 class="text-lg sm:text-xl font-bold">API 接入信息</h2>
-      </div>
-      <div class="space-y-3 text-sm">
-        <div>
-          <div class="text-blue-200 mb-1">📡 API 地址</div>
-          <div class="code-block">POST https://&lt;你的 IP&gt;/siri-dream/api/message</div>
-        </div>
-        <div>
-          <div class="text-blue-200 mb-1">📝 请求格式</div>
-          <div class="code-block">{
-  "text": "要处理的消息内容",
-  "metadata": { "source": "app", "user": "username" }
-}</div>
-        </div>
-        <div>
-          <div class="text-blue-200 mb-1">📤 响应格式</div>
-          <div class="code-block">{
-  "success": true,
-  "message_id": "uuid",
-  "message": "处理结果"
-}</div>
-        </div>
-      </div>
-    </div>
 
     <!-- 统计卡片 -->
     <div id="statsCard" class="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4 mb-6">
@@ -126,6 +99,42 @@
         <button onclick="refreshMessages()" class="text-gray-400 hover:text-blue-500 transition-colors text-sm">🔄 刷新</button>
       </div>
       <div id="messagesList" class="space-y-3"></div>
+    </div>
+
+    <!-- API 接入信息（折叠） -->
+    <div class="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-6 mb-6">
+      <button onclick="toggleApiInfo()" class="w-full flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-xl">🔌</div>
+          <h2 class="text-lg sm:text-xl font-bold text-gray-800">API 接入信息</h2>
+        </div>
+        <span id="apiToggleIcon" class="text-gray-400 text-xl">▼</span>
+      </button>
+      <div id="apiInfo" class="hidden mt-4 pt-4 border-t border-gray-200">
+        <div class="api-card rounded-xl p-4 sm:p-6 text-white">
+          <div class="space-y-3 text-sm">
+            <div>
+              <div class="text-blue-200 mb-1">📡 API 地址</div>
+              <div class="code-block">POST https://&lt;你的 IP&gt;/siri-dream/api/message</div>
+            </div>
+            <div>
+              <div class="text-blue-200 mb-1">📝 请求格式</div>
+              <div class="code-block">{
+  "text": "要处理的消息内容",
+  "metadata": { "source": "app", "user": "username" }
+}</div>
+            </div>
+            <div>
+              <div class="text-blue-200 mb-1">📤 响应格式</div>
+              <div class="code-block">{
+  "success": true,
+  "message_id": "uuid",
+  "message": "处理结果"
+}</div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -196,6 +205,7 @@
   <script>
     let panelOpen = false;
     let allMessages = [];
+    let lastMessageCount = 0;
 
     function togglePanel() {
       panelOpen = !panelOpen;
@@ -210,23 +220,41 @@
       }
     }
 
+    function toggleApiInfo() {
+      const apiInfo = document.getElementById('apiInfo');
+      const icon = document.getElementById('apiToggleIcon');
+      if (apiInfo.classList.contains('hidden')) {
+        apiInfo.classList.remove('hidden');
+        icon.textContent = '▲';
+      } else {
+        apiInfo.classList.add('hidden');
+        icon.textContent = '▼';
+      }
+    }
+
     // 使用共享的 agent-chat 组件
     // fillExample, sendMessage, showResult 等函数由 agent-chat.js 提供
 
     async function loadMessages() {
       try {
-        const res = await fetch('/siri-dream/api/messages');
+        const res = await fetch('/siri-dream/api/messages?limit=50');
         const messages = await res.json();
-        allMessages = messages;
+        allMessages = messages.success ? messages.data : [];
         
         const container = document.getElementById('messagesList');
+        const currentCount = allMessages.length;
         
         if (messages.length === 0) {
           container.innerHTML = '<div class="text-center py-12 text-gray-400"><div class="text-5xl mb-4">📭</div><p>暂无消息记录</p></div>';
+          updateStats();
           return;
         }
 
-        container.innerHTML = messages.map(msg => {
+        // 检测是否有新消息
+        const hasNewMessage = currentCount > lastMessageCount;
+        lastMessageCount = currentCount;
+
+        container.innerHTML = messages.map((msg, index) => {
           let statusClass = 'status-pending';
           let statusText = '⏳ 待处理';
           let statusColor = 'text-amber-600';
@@ -245,8 +273,10 @@
             statusColor = 'text-red-600';
           }
 
+          const newMessageClass = (hasNewMessage && index === 0) ? 'new-message' : '';
+
           return `
-          <div class="message-card glass-card rounded-xl p-4 ${statusClass}">
+          <div class="message-card glass-card rounded-xl p-4 ${statusClass} ${newMessageClass}">
             <div class="flex justify-between items-start mb-3">
               <div class="flex-1">
                 <div class="flex items-center gap-2 mb-2">
@@ -313,7 +343,8 @@
         if (result.success) {
           showResult('消息已发送，等待处理...', 'success');
           input.value = '';
-          setTimeout(loadMessages, 1000);
+          // 立即刷新显示新消息
+          setTimeout(loadMessages, 500);
         } else {
           showResult('发送失败：' + (result.error || '未知错误'), 'error');
         }
@@ -367,8 +398,8 @@
     // 加载消息
     loadMessages();
     
-    // 每 30 秒自动刷新
-    setInterval(loadMessages, 30000);
+    // 每 5 秒自动刷新（实时显示新消息）
+    setInterval(loadMessages, 5000);
   </script>
 </body>
 </html>

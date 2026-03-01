@@ -1,5 +1,90 @@
 [
   {
+    "id": "0a341cbb-79d4-4e7f-9642-bddd5c529293",
+    "text": "要处理的消息内容",
+    "source": "api",
+    "timestamp": 1772364968,
+    "created_at": "2026-03-01 19:36:08",
+    "status": "failed",
+    "result": {
+      "error": "'\\n  \"success\"'"
+    },
+    "metadata": {
+      "source": "app",
+      "user": "username"
+    }
+  },
+  {
+    "id": "10290edc-2106-489e-a36d-4e715a4c64f2",
+    "text": "测试",
+    "source": "api",
+    "timestamp": 1772360321,
+    "created_at": "2026-03-01 18:18:41",
+    "status": "failed",
+    "result": {
+      "error": "'\\n  \"success\"'"
+    },
+    "metadata": {
+      "source": "web"
+    }
+  },
+  {
+    "id": "33f4e713-4d52-44f8-8393-abd6ae672e09",
+    "text": "测试",
+    "source": "api",
+    "timestamp": 1772360320,
+    "created_at": "2026-03-01 18:18:40",
+    "status": "failed",
+    "result": {
+      "error": "'\\n  \"success\"'"
+    },
+    "metadata": {
+      "source": "web"
+    }
+  },
+  {
+    "id": "b78e1c3e-1fc7-4acf-8c19-2dac2143a576",
+    "text": "测试",
+    "source": "api",
+    "timestamp": 1772360317,
+    "created_at": "2026-03-01 18:18:37",
+    "status": "failed",
+    "result": {
+      "error": "'\\n  \"success\"'"
+    },
+    "metadata": {
+      "source": "web"
+    }
+  },
+  {
+    "id": "d00ab6aa-a64d-44fd-9e6d-4342eb42afd9",
+    "text": "测试",
+    "source": "api",
+    "timestamp": 1772360316,
+    "created_at": "2026-03-01 18:18:36",
+    "status": "failed",
+    "result": {
+      "error": "'\\n  \"success\"'"
+    },
+    "metadata": {
+      "source": "web"
+    }
+  },
+  {
+    "id": "8c0ebb31-a69c-4a9e-8399-e34d261dd7ef",
+    "text": "测试消息",
+    "source": "api",
+    "timestamp": 1772360260,
+    "created_at": "2026-03-01 18:17:40",
+    "status": "failed",
+    "result": {
+      "error": "'\\n  \"success\"'"
+    },
+    "metadata": {
+      "source": "web"
+    }
+  },
+  {
     "id": "153952b9-61a6-4569-b3f0-22e0de68606b",
     "text": "测试",
     "source": "api",
