@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>下载 SSL 证书</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+  </style>
+</head>
+<body class="gradient-bg min-h-screen flex items-center justify-center p-4">
+  <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-2xl w-full">
+    <div class="text-center mb-8">
+      <div class="text-6xl mb-4">🔒</div>
+      <h1 class="text-3xl font-bold text-gray-800 mb-2">SSL 证书下载</h1>
+      <p class="text-gray-600">WebViewer 自签名证书</p>
+    </div>
+
+    <div class="space-y-6">
+      <!-- 证书文件 -->
+      <div class="bg-blue-50 border border-blue-200 rounded-xl p-6">
+        <h2 class="text-lg font-semibold text-blue-800 mb-4">📄 证书文件</h2>
+        <div class="space-y-3">
+          <div class="flex items-center justify-between bg-white rounded-lg p-4">
+            <div>
+              <div class="font-medium text-gray-800">server.crt</div>
+              <div class="text-sm text-gray-500">SSL 证书文件（公钥）</div>
+            </div>
+            <a href="/server.crt" download="server.crt" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2">
+              <span>⬇️</span>
+              <span>下载</span>
+            </a>
+          </div>
+          <div class="flex items-center justify-between bg-white rounded-lg p-4">
+            <div>
+              <div class="font-medium text-gray-800">server.key</div>
+              <div class="text-sm text-gray-500">SSL 私钥文件（⚠️ 保密）</div>
+            </div>
+            <a href="/server.key" download="server.key" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2">
+              <span>⬇️</span>
+              <span>下载</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- 安装说明 -->
+      <div class="bg-gray-50 border border-gray-200 rounded-xl p-6">
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">📖 安装说明</h2>
+        <div class="space-y-4 text-sm text-gray-700">
+          <div>
+            <h3 class="font-semibold mb-2">Windows:</h3>
+            <ol class="list-decimal list-inside space-y-1">
+              <li>双击 server.crt 文件</li>
+              <li>点击"安装证书"</li>
+              <li>选择"本地计算机"</li>
+              <li>选择"将所有的证书都放入下列存储"</li>
+              <li>点击"浏览"，选择"受信任的根证书颁发机构"</li>
+              <li>点击"确定" → "下一步" → "完成"</li>
+            </ol>
+          </div>
+          <div>
+            <h3 class="font-semibold mb-2">macOS:</h3>
+            <ol class="list-decimal list-inside space-y-1">
+              <li>双击 server.crt 文件</li>
+              <li>钥匙串访问会打开</li>
+              <li>右键点击证书，选择"显示简介"</li>
+              <li>展开"信任"选项</li>
+              <li>"使用此证书时"选择"始终信任"</li>
+              <li>关闭窗口，输入密码确认</li>
+            </ol>
+          </div>
+          <div>
+            <h3 class="font-semibold mb-2">iOS/Android:</h3>
+            <ol class="list-decimal list-inside space-y-1">
+              <li>下载 server.crt 文件</li>
+              <li>在设置中安装描述文件</li>
+              <li>重启设备</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      <!-- 证书信息 -->
+      <div class="bg-green-50 border border-green-200 rounded-xl p-6">
+        <h2 class="text-lg font-semibold text-green-800 mb-4">ℹ️ 证书信息</h2>
+        <div class="space-y-2 text-sm text-gray-700">
+          <div class="flex justify-between">
+            <span>颁发给:</span>
+            <span class="font-mono">localhost</span>
+          </div>
+          <div class="flex justify-between">
+            <span>颁发者:</span>
+            <span class="font-mono">WebViewer</span>
+          </div>
+          <div class="flex justify-between">
+            <span>有效期:</span>
+            <span class="font-mono">365 天</span>
+          </div>
+          <div class="flex justify-between">
+            <span>类型:</span>
+            <span class="font-mono">自签名证书</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 返回链接 -->
+      <div class="text-center pt-4 border-t border-gray-200">
+        <a href="/" class="text-blue-500 hover:text-blue-600 font-medium transition-colors flex items-center justify-center gap-2">
+          <span>←</span>
+          <span>返回首页</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

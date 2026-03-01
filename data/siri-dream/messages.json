@@ -1,5 +1,34 @@
 [
   {
+    "id": "7e3048fd-480f-4d4a-9223-bfb2bf0db496",
+    "text": "你帮我看一下感冒药在哪里",
+    "source": "api",
+    "timestamp": 1772373099,
+    "created_at": "2026-03-01 21:51:39",
+    "status": "completed",
+    "result": {
+      "message": "根据之前的记录，感冒药放在药箱。需要我帮你查看其他物品的位置吗？"
+    },
+    "metadata": {
+      "source": "app",
+      "user": "username"
+    }
+  },
+  {
+    "id": "5cd5f054-5f4b-4db9-bd3a-20624cfea793",
+    "text": "你好啊",
+    "source": "api",
+    "timestamp": 1772373062,
+    "created_at": "2026-03-01 21:51:02",
+    "status": "completed",
+    "result": {
+      "message": "你好，我是 WebViewer 助手 Dummy。可以帮你处理出行、搬家和物品记录等请求。有什么需要帮忙的吗？"
+    },
+    "metadata": {
+      "source": "web"
+    }
+  },
+  {
     "id": "12ebc4ad-c0d4-4af1-be3b-d0c915e35f9d",
     "text": "你好",
     "source": "api",
