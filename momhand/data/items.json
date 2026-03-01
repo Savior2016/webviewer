@@ -130,5 +130,25 @@
     "moveId": "265831af-f681-4454-8582-0cf1dd51f122",
     "createdAt": 1772205172000,
     "updatedAt": 1772238910622
+  },
+  {
+    "id": "dfe11d3f-fd0e-4814-8b85-d299a87e2f20",
+    "name": "耳机",
+    "location": "1 号箱子",
+    "category": "搬家物品",
+    "source": "cherry-pick",
+    "moveId": "f9ca3e66-b2ae-40d2-953b-e4c58c42f8c1",
+    "createdAt": 1772351381000,
+    "updatedAt": 1772351381834
+  },
+  {
+    "id": "0567d827-ccc8-4ec4-8336-cb1a01e95d2d",
+    "name": "手机",
+    "location": "2 号箱子",
+    "category": "搬家物品",
+    "source": "cherry-pick",
+    "moveId": "f9ca3e66-b2ae-40d2-953b-e4c58c42f8c1",
+    "createdAt": 1772355463000,
+    "updatedAt": 1772355463881
   }
 ]

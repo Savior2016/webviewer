@@ -1,0 +1,35 @@
+{
+  "moves": [
+    {
+      "id": "f9ca3e66-b2ae-40d2-953b-e4c58c42f8c1",
+      "name": "三月搬家",
+      "description": "",
+      "created_at": 1772351278,
+      "status": "active"
+    }
+  ],
+  "items": [
+    {
+      "id": "dfe11d3f-fd0e-4814-8b85-d299a87e2f20",
+      "move_id": "f9ca3e66-b2ae-40d2-953b-e4c58c42f8c1",
+      "name": "耳机",
+      "before_location": "",
+      "pack_location": "",
+      "after_location": "1 号箱子",
+      "synced_to_momhand": false,
+      "created_at": 1772351381,
+      "updated_at": 1772351381
+    },
+    {
+      "id": "0567d827-ccc8-4ec4-8336-cb1a01e95d2d",
+      "move_id": "f9ca3e66-b2ae-40d2-953b-e4c58c42f8c1",
+      "name": "手机",
+      "before_location": "",
+      "pack_location": "",
+      "after_location": "2 号箱子",
+      "synced_to_momhand": false,
+      "created_at": 1772355463,
+      "updated_at": 1772355463
+    }
+  ]
+}
