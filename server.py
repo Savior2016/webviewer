@@ -42,7 +42,7 @@ def get_momhand_manager():
     """获取最新的物品管理器实例（SQLite 数据库版本）"""
     if 'momhand_manager_db' in sys.modules:
         importlib.reload(sys.modules['momhand_manager_db'])
-    sys.path.insert(0, "/root/.openclaw/workspace/webviewer")
+    sys.path.insert(0, "/root/.openclaw/workspace")
     from momhand_manager_db import manager
     return manager
 
@@ -50,7 +50,7 @@ def get_cherry_pick_manager():
     """获取最新的搬家管理器实例"""
     if 'cherry_pick_manager' in sys.modules:
         importlib.reload(sys.modules['cherry_pick_manager'])
-    sys.path.insert(0, "/root/.openclaw/workspace/webviewer")
+    sys.path.insert(0, "/root/.openclaw/workspace")
     from cherry_pick_manager import manager
     return manager
 
@@ -58,11 +58,11 @@ def get_bydesign_manager():
     """获取最新的出行管理器实例"""
     if 'bydesign_manager' in sys.modules:
         importlib.reload(sys.modules['bydesign_manager'])
-    sys.path.insert(0, "/root/.openclaw/workspace/webviewer")
+    sys.path.insert(0, "/root/.openclaw/workspace")
     from bydesign_manager import manager
     return manager
 
-SETTINGS_FILE = Path("/root/.openclaw/workspace/webviewer/data/settings.json")
+SETTINGS_FILE = Path("/root/.openclaw/workspace/data/settings.json")
 
 def get_system_prompt():
     """获取系统提示词"""
@@ -352,7 +352,7 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
         """获取项目提示词"""
         try:
             project = path.split("/")[-1]
-            prompt_file = f"/root/.openclaw/workspace/webviewer/data/prompts/{project}.json"
+            prompt_file = f"/root/.openclaw/workspace/data/prompts/{project}.json"
             
             if os.path.exists(prompt_file):
                 with open(prompt_file, 'r', encoding='utf-8') as f:
@@ -386,7 +386,7 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
             if not re.match(r'^[a-zA-Z0-9_-]+$', project):
                 raise Exception(f"无效的项目名称：{project}")
             
-            prompt_file = f"/root/.openclaw/workspace/webviewer/data/prompts/{project}.json"
+            prompt_file = f"/root/.openclaw/workspace/data/prompts/{project}.json"
             
             print(f"💾 保存 {project} 提示词到：{prompt_file}")
             print(f"   数据：{data}")
@@ -477,7 +477,7 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"error": "缺少 msg_id 参数"}, ensure_ascii=False).encode("utf-8"))
                 return
             
-            result_file = f"/root/.openclaw/workspace/webviewer/data/results/{msg_id}.json"
+            result_file = f"/root/.openclaw/workspace/data/results/{msg_id}.json"
             if os.path.exists(result_file):
                 with open(result_file, 'r', encoding='utf-8') as f:
                     result = json.load(f)
@@ -949,7 +949,7 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
             print(f"🔄 开始后台处理消息：{msg_id}")
             
             import sys
-            sys.path.insert(0, "/root/.openclaw/workspace/webviewer")
+            sys.path.insert(0, "/root/.openclaw/workspace")
             from openclaw_agent_processor import process_via_openclaw_agent
             
             print(f"📤 发送消息到 OpenClaw Agent: {message[:50]}...")
@@ -958,7 +958,7 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
             result = process_via_openclaw_agent(message)
             
             # 保存结果
-            result_dir = "/root/.openclaw/workspace/webviewer/data/results"
+            result_dir = "/root/.openclaw/workspace/data/results"
             os.makedirs(result_dir, exist_ok=True)
             
             result_data = {
@@ -991,7 +991,7 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
     
     def _save_error_result(self, msg_id: str, message: str, error: str):
         """保存错误结果"""
-        result_dir = "/root/.openclaw/workspace/webviewer/data/results"
+        result_dir = "/root/.openclaw/workspace/data/results"
         os.makedirs(result_dir, exist_ok=True)
         
         result_data = {
