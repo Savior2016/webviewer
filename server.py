@@ -858,23 +858,24 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
         try:
             import sys
             sys.path.insert(0, "/root/.openclaw/workspace")
-            from siri_dream_manager import manager
+            import siri_dream_manager
+            manager = siri_dream_manager.manager
             
             response = {"success": False, "data": None}
             
             if path == "/siri-dream/api/messages":
                 limit = int(query.get("limit", [50])[0])
                 offset = int(query.get("offset", [0])[0])
-                response["data"] = manager.get_messages(limit, offset)
+                response["data"] = manager['get_messages'](limit, offset)
                 response["success"] = True
             
             elif path == "/siri-dream/api/stats":
-                response["data"] = manager.get_statistics()
+                response["data"] = manager['get_statistics']()
                 response["success"] = True
             
             elif path.startswith("/siri-dream/api/messages/"):
                 message_id = path.split("/")[-1]
-                message = manager.get_message(message_id)
+                message = manager['get_message'](message_id)
                 if message:
                     response["data"] = message
                     response["success"] = True
@@ -889,6 +890,8 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
         
         except Exception as e:
             print(f"❌ Siri Dream API 错误：{e}")
+            import traceback
+            traceback.print_exc()
             self.send_response(500)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
@@ -899,7 +902,8 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
         try:
             import sys
             sys.path.insert(0, "/root/.openclaw/workspace")
-            from siri_dream_manager import manager
+            import siri_dream_manager
+            manager = siri_dream_manager.manager
             
             text = data.get('text', '')
             metadata = data.get('metadata', {})
@@ -912,7 +916,7 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
                 return
             
             # 添加消息
-            message = manager.add_message(text, 'api', metadata)
+            message = manager['add_message'](text, 'api', metadata)
             
             # 异步处理消息
             import threading
@@ -935,6 +939,8 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
         
         except Exception as e:
             print(f"❌ Siri Dream 消息处理失败：{e}")
+            import traceback
+            traceback.print_exc()
             self.send_response(500)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
@@ -945,13 +951,14 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
         try:
             import sys
             sys.path.insert(0, "/root/.openclaw/workspace")
-            from siri_dream_manager import manager
+            import siri_dream_manager
+            manager = siri_dream_manager.manager
             
             # 更新状态为处理中
-            manager.update_message_status(message_id, 'processing')
+            manager['update_message_status'](message_id, 'processing')
             
             # 获取提示词
-            system_prompt = manager.get_system_prompt()
+            system_prompt = manager['get_system_prompt']()
             full_prompt = system_prompt.format(message=text)
             
             # 调用 OpenClaw Agent
@@ -972,16 +979,16 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
             
             if json_match:
                 result_data = json.loads(json_match.group(0))
-                manager.update_message_status(message_id, 'completed', result_data)
+                manager['update_message_status'](message_id, 'completed', result_data)
                 print(f"✅ Siri Dream 处理完成：{message_id}")
             else:
-                manager.update_message_status(message_id, 'completed', {"message": output.strip()})
+                manager['update_message_status'](message_id, 'completed', {"message": output.strip()})
         
         except subprocess.TimeoutExpired:
-            manager.update_message_status(message_id, 'failed', {"error": "处理超时"})
+            manager['update_message_status'](message_id, 'failed', {"error": "处理超时"})
             print(f"❌ Siri Dream 处理超时：{message_id}")
         except Exception as e:
-            manager.update_message_status(message_id, 'failed', {"error": str(e)})
+            manager['update_message_status'](message_id, 'failed', {"error": str(e)})
             print(f"❌ Siri Dream 处理失败 {message_id}: {e}")
     
     def handle_siri_dream_delete(self, path):
@@ -989,10 +996,11 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
         try:
             import sys
             sys.path.insert(0, "/root/.openclaw/workspace")
-            from siri_dream_manager import manager
+            import siri_dream_manager
+            manager = siri_dream_manager.manager
             
             message_id = path.split("/")[-1]
-            result = manager.delete_message(message_id)
+            result = manager['delete_message'](message_id)
             
             self.send_response(200)
             self.send_header("Content-Type", "application/json; charset=utf-8")
