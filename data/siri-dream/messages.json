@@ -1,5 +1,124 @@
 [
   {
+    "id": "7e71a25c-e19e-4bad-8cef-1c11dda600b3",
+    "text": "你让他帮我看一下我的感冒药放在了哪里",
+    "source": "api",
+    "timestamp": 1772378088,
+    "created_at": "2026-03-01 23:14:48",
+    "status": "completed",
+    "result": {
+      "message": "根据之前的记录，你的感冒药放在药箱。需要我帮你查看其他物品的位置吗？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
+    "id": "95679d1a-d253-4186-90a7-f78b7da2c028",
+    "text": "你让他帮我看看我的感冒药放在了哪里",
+    "source": "api",
+    "timestamp": 1772378058,
+    "created_at": "2026-03-01 23:14:18",
+    "status": "completed",
+    "result": {
+      "message": "根据之前的记录，你的感冒药放在药箱。需要我帮你查看其他物品的位置吗？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
+    "id": "98602c15-9054-4b91-8779-36559a679a62",
+    "text": "你让他帮我看一下我的感冒药放在了哪里",
+    "source": "api",
+    "timestamp": 1772378019,
+    "created_at": "2026-03-01 23:13:39",
+    "status": "completed",
+    "result": {
+      "message": "根据之前的记录，你的感冒药放在药箱。需要我帮你查看其他物品的位置吗？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
+    "id": "d9e4433a-0bed-406c-afaf-8faafde3e912",
+    "text": "你让他帮我看一下我的感冒药放在了哪里",
+    "source": "api",
+    "timestamp": 1772377989,
+    "created_at": "2026-03-01 23:13:09",
+    "status": "completed",
+    "result": {
+      "message": "根据之前的记录，你的感冒药放在药箱。需要我帮你查看其他物品的位置吗？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
+    "id": "3111f0b3-4b95-4baf-8dc1-5b110b8f5e5d",
+    "text": "你让他帮我看一下我的药放在哪里",
+    "source": "api",
+    "timestamp": 1772377925,
+    "created_at": "2026-03-01 23:12:05",
+    "status": "completed",
+    "result": {
+      "message": "根据之前的记录，你的感冒药放在药箱。需要我帮你查看其他物品的位置吗？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
+    "id": "74b94000-806b-470a-91ca-41add6c4936a",
+    "text": "你让他帮我看一下我的药在哪里",
+    "source": "api",
+    "timestamp": 1772377870,
+    "created_at": "2026-03-01 23:11:10",
+    "status": "completed",
+    "result": {
+      "message": "根据之前的记录，你的感冒药放在药箱。需要我帮你查看其他物品的位置吗？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
+    "id": "0207b0dd-8ad9-4d93-a0cb-ee02841ca491",
+    "text": "你好，测试同步处理",
+    "source": "api",
+    "timestamp": 1772377658,
+    "created_at": "2026-03-01 23:07:38",
+    "status": "completed",
+    "result": {
+      "message": "收到你的测试消息了。我是 WebViewer 助手 Dummy，可以帮你处理出行、搬家和物品记录等请求。有什么需要帮忙的吗？"
+    },
+    "metadata": {
+      "source": "web"
+    }
+  },
+  {
+    "id": "696f2c3d-702e-48b7-a033-24e992653a3f",
+    "text": "你好请让他帮我看一下我感冒药在哪",
+    "source": "api",
+    "timestamp": 1772377335,
+    "created_at": "2026-03-01 23:02:15",
+    "status": "completed",
+    "result": {
+      "message": "根据之前的记录，你的感冒药放在药箱。需要我帮你查看其他物品的位置吗？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
     "id": "ad765554-a1b8-4e4f-88a2-208e985bd660",
     "text": "让他帮我看一下我的感冒药在哪儿",
     "source": "api",

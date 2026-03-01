@@ -863,7 +863,46 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
             
             response = {"success": False, "data": None}
             
-            if path == "/siri-dream/api/messages":
+            # 新增：通过 message_id 查询单个消息处理结果
+            if path.startswith("/siri-dream/api/message/"):
+                message_id = path.split("/")[-1]
+                message = manager['get_message'](message_id)
+                
+                if message:
+                    # 根据状态返回不同响应
+                    if message['status'] == 'pending':
+                        response = {
+                            "success": True,
+                            "message_id": message_id,
+                            "status": "pending",
+                            "message": "消息已接收，等待处理..."
+                        }
+                    elif message['status'] == 'processing':
+                        response = {
+                            "success": True,
+                            "message_id": message_id,
+                            "status": "processing",
+                            "message": "正在处理中，请稍候..."
+                        }
+                    elif message['status'] == 'completed':
+                        response = {
+                            "success": True,
+                            "message_id": message_id,
+                            "status": "completed",
+                            "message": message.get('result', {}).get('message', '处理完成'),
+                            "result": message.get('result', {})
+                        }
+                    elif message['status'] == 'failed':
+                        response = {
+                            "success": False,
+                            "message_id": message_id,
+                            "status": "failed",
+                            "error": message.get('result', {}).get('error', '处理失败')
+                        }
+                else:
+                    response = {"success": False, "error": "消息不存在"}
+            
+            elif path == "/siri-dream/api/messages":
                 limit = int(query.get("limit", [50])[0])
                 offset = int(query.get("offset", [0])[0])
                 response["data"] = manager['get_messages'](limit, offset)
@@ -901,7 +940,7 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode("utf-8"))
     
     def handle_siri_dream_message(self, data):
-        """处理 Siri Dream 消息 - 同步等待处理完成"""
+        """处理 Siri Dream 消息 - 异步处理，立即返回 message_id"""
         try:
             import sys
             sys.path.insert(0, "/root/.openclaw/workspace")
@@ -921,22 +960,36 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
             # 添加消息（状态：pending）
             message = manager['add_message'](text, 'api', metadata)
             
-            # 同步处理消息（等待完成）
-            result_data = self._process_siri_dream_message_sync(message['id'], text)
+            # 异步处理消息
+            import threading
+            thread = threading.Thread(
+                target=self._process_siri_dream_message_sync,
+                args=(message['id'], text),
+                daemon=True
+            )
+            thread.start()
             
-            # 返回处理结果
+            # 立即返回 message_id
             self.send_response(200)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
             self.end_headers()
             self.wfile.write(json.dumps({
                 "success": True,
                 "message_id": message['id'],
-                "message": result_data.get('message', '处理完成'),
-                "result": result_data
+                "message": "消息已接收，正在处理...",
+                "status": "processing"
             }, ensure_ascii=False).encode("utf-8"))
         
         except Exception as e:
+            print(f"❌ Siri Dream 消息处理失败：{e}")
+            import traceback
+            traceback.print_exc()
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode("utf-8"))
             print(f"❌ Siri Dream 消息处理失败：{e}")
             import traceback
             traceback.print_exc()
