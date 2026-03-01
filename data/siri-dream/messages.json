@@ -1,5 +1,182 @@
 [
   {
+    "id": "b6d978d0-bcac-4ffd-a18d-14342f1de491",
+    "text": "你好",
+    "source": "api",
+    "timestamp": 1772382219,
+    "created_at": "2026-03-02 00:23:39",
+    "status": "processing",
+    "result": null,
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
+    "id": "61d63487-81d9-46ee-9beb-51c23ea892cd",
+    "text": "你好",
+    "source": "api",
+    "timestamp": 1772381849,
+    "created_at": "2026-03-02 00:17:29",
+    "status": "completed",
+    "result": {
+      "message": "你好，我是 WebViewer 助手 Dummy，可以帮你处理出行、搬家和物品记录等请求。有什么需要帮忙的吗？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
+    "id": "05af77bc-37e3-4fcf-abd3-b2fd43fd47d7",
+    "text": "你好",
+    "source": "api",
+    "timestamp": 1772381686,
+    "created_at": "2026-03-02 00:14:46",
+    "status": "completed",
+    "result": {
+      "message": "你好，我是 WebViewer 助手 Dummy，可以帮你处理出行、搬家和物品记录等请求。有什么需要帮忙的吗？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
+    "id": "16661648-cc10-40d1-8794-210671a65314",
+    "text": "你好",
+    "source": "api",
+    "timestamp": 1772381538,
+    "created_at": "2026-03-02 00:12:18",
+    "status": "completed",
+    "result": {
+      "message": "你好，我是 WebViewer 助手 Dummy，可以帮你处理出行、搬家和物品记录等请求。有什么需要帮忙的吗？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
+    "id": "c6b71f4e-30b4-47a1-8e96-5cf8a2ed04ad",
+    "text": "你好啊",
+    "source": "api",
+    "timestamp": 1772381477,
+    "created_at": "2026-03-02 00:11:17",
+    "status": "completed",
+    "result": {
+      "message": "你好，我是 WebViewer 助手 Dummy，可以帮你处理出行、搬家和物品记录等请求。有什么需要帮忙的吗？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
+    "id": "ead6f81f-776c-4ea0-b9e5-5089ee2633f2",
+    "text": "你好",
+    "source": "api",
+    "timestamp": 1772380009,
+    "created_at": "2026-03-01 23:46:49",
+    "status": "completed",
+    "result": {
+      "message": "你好，我是 WebViewer 助手 Dummy，可以帮你处理出行、搬家和物品记录等请求。有什么需要帮忙的吗？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
+    "id": "f73d86cb-a816-41b4-abff-a8ac9c6d25c0",
+    "text": "你好",
+    "source": "api",
+    "timestamp": 1772379977,
+    "created_at": "2026-03-01 23:46:17",
+    "status": "completed",
+    "result": {
+      "message": "你好，我是 WebViewer 助手 Dummy，可以帮你处理出行、搬家和物品记录等请求。有什么需要帮忙的吗？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
+    "id": "7048579f-3f6a-4514-b38a-e18a668621bf",
+    "text": "你好",
+    "source": "api",
+    "timestamp": 1772379933,
+    "created_at": "2026-03-01 23:45:33",
+    "status": "completed",
+    "result": {
+      "message": "你好，我是 WebViewer 助手 Dummy，可以帮你处理出行、搬家和物品记录等请求。有什么需要帮忙的吗？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
+    "id": "3c187639-4503-4395-9d6a-fbb5c11e2e2b",
+    "text": "你好",
+    "source": "api",
+    "timestamp": 1772379627,
+    "created_at": "2026-03-01 23:40:27",
+    "status": "completed",
+    "result": {
+      "message": "你好，我是 WebViewer 助手 Dummy，可以帮你处理出行、搬家和物品记录等请求。有什么需要帮忙的吗？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
+    "id": "b9a5c7ba-f0f8-467f-a783-337c0e064b61",
+    "text": "你好",
+    "source": "api",
+    "timestamp": 1772379495,
+    "created_at": "2026-03-01 23:38:15",
+    "status": "completed",
+    "result": {
+      "message": "你好，我是 WebViewer 助手 Dummy，可以帮你处理出行、搬家和物品记录等请求。有什么需要帮忙的吗？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
+    "id": "f1ee61a2-46f7-4ff4-9f8b-b183195a3c2e",
+    "text": "你好",
+    "source": "api",
+    "timestamp": 1772378915,
+    "created_at": "2026-03-01 23:28:35",
+    "status": "completed",
+    "result": {
+      "message": "你好，我是 WebViewer 助手 Dummy，可以帮你处理出行、搬家和物品记录等请求。有什么需要帮忙的吗？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
+    "id": "f2ab7ce2-bea5-4a45-920e-0c891c7c7b79",
+    "text": "测试异步查询",
+    "source": "api",
+    "timestamp": 1772378813,
+    "created_at": "2026-03-01 23:26:53",
+    "status": "completed",
+    "result": {
+      "message": "收到你的测试消息了。我是 WebViewer 助手 Dummy，可以帮你处理出行、搬家和物品记录等请求。有什么需要帮忙的吗？"
+    },
+    "metadata": {
+      "source": "api_test"
+    }
+  },
+  {
     "id": "7e71a25c-e19e-4bad-8cef-1c11dda600b3",
     "text": "你让他帮我看一下我的感冒药放在了哪里",
     "source": "api",

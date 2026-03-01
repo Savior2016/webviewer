@@ -294,7 +294,11 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
             elif path.startswith("/bydesign/api/"):
                 self.handle_bydesign_post(path, data)
             elif path == "/siri-dream/api/message":
-                self.handle_siri_dream_message(data)
+                # POST 请求：如果有 message_id 则查询，否则发送新消息
+                if 'message_id' in data:
+                    self.handle_siri_dream_query(data)
+                else:
+                    self.handle_siri_dream_message(data)
             else:
                 self.send_response(404)
                 self.end_headers()
@@ -984,6 +988,87 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
         
         except Exception as e:
             print(f"❌ Siri Dream 消息处理失败：{e}")
+            import traceback
+            traceback.print_exc()
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode("utf-8"))
+    
+    def handle_siri_dream_query(self, data):
+        """通过 POST + message_id 查询处理结果"""
+        try:
+            import sys
+            sys.path.insert(0, "/root/.openclaw/workspace")
+            import siri_dream_manager
+            manager = siri_dream_manager.manager
+            
+            message_id = data.get('message_id', '')
+            
+            if not message_id:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": False, "error": "message_id 不能为空"}).encode("utf-8"))
+                return
+            
+            # 查询消息
+            message = manager['get_message'](message_id)
+            
+            if not message:
+                self.send_response(404)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": False, "error": "消息不存在"}).encode("utf-8"))
+                return
+            
+            # 根据状态返回不同响应
+            if message['status'] == 'pending':
+                response = {
+                    "success": True,
+                    "message_id": message_id,
+                    "status": "pending",
+                    "message": "消息已接收，等待处理..."
+                }
+            elif message['status'] == 'processing':
+                response = {
+                    "success": True,
+                    "message_id": message_id,
+                    "status": "processing",
+                    "message": "正在处理中，请稍候..."
+                }
+            elif message['status'] == 'completed':
+                response = {
+                    "success": True,
+                    "message_id": message_id,
+                    "status": "completed",
+                    "message": message.get('result', {}).get('message', '处理完成'),
+                    "result": message.get('result', {})
+                }
+            elif message['status'] == 'failed':
+                response = {
+                    "success": False,
+                    "message_id": message_id,
+                    "status": "failed",
+                    "error": message.get('result', {}).get('error', '处理失败')
+                }
+            else:
+                response = {
+                    "success": False,
+                    "message_id": message_id,
+                    "status": message['status'],
+                    "error": "未知状态"
+                }
+            
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+            self.end_headers()
+            self.wfile.write(json.dumps(response, ensure_ascii=False).encode("utf-8"))
+        
+        except Exception as e:
+            print(f"❌ Siri Dream 查询失败：{e}")
             import traceback
             traceback.print_exc()
             self.send_response(500)
