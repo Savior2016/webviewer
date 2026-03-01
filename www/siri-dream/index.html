@@ -238,13 +238,13 @@
     async function loadMessages() {
       try {
         const res = await fetch('/siri-dream/api/messages?limit=50');
-        const messages = await res.json();
-        allMessages = messages.success ? messages.data : [];
+        const result = await res.json();
+        allMessages = result.success ? result.data : [];
         
         const container = document.getElementById('messagesList');
         const currentCount = allMessages.length;
         
-        if (messages.length === 0) {
+        if (allMessages.length === 0) {
           container.innerHTML = '<div class="text-center py-12 text-gray-400"><div class="text-5xl mb-4">📭</div><p>暂无消息记录</p></div>';
           updateStats();
           return;
