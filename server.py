@@ -901,7 +901,7 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode("utf-8"))
     
     def handle_siri_dream_message(self, data):
-        """处理 Siri Dream 消息"""
+        """处理 Siri Dream 消息 - 同步等待处理完成"""
         try:
             import sys
             sys.path.insert(0, "/root/.openclaw/workspace")
@@ -918,18 +918,13 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"success": False, "error": "消息内容不能为空"}).encode("utf-8"))
                 return
             
-            # 添加消息
+            # 添加消息（状态：pending）
             message = manager['add_message'](text, 'api', metadata)
             
-            # 异步处理消息
-            import threading
-            thread = threading.Thread(
-                target=self._process_siri_dream_message,
-                args=(message['id'], text),
-                daemon=True
-            )
-            thread.start()
+            # 同步处理消息（等待完成）
+            result_data = self._process_siri_dream_message_sync(message['id'], text)
             
+            # 返回处理结果
             self.send_response(200)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Access-Control-Allow-Origin", "*")
@@ -937,7 +932,8 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(json.dumps({
                 "success": True,
                 "message_id": message['id'],
-                "message": "消息已接收，正在处理..."
+                "message": result_data.get('message', '处理完成'),
+                "result": result_data
             }, ensure_ascii=False).encode("utf-8"))
         
         except Exception as e:
@@ -1009,6 +1005,68 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
         except Exception as e:
             manager['update_message_status'](message_id, 'failed', {"error": str(e)})
             print(f"❌ Siri Dream 处理失败 {message_id}: {e}")
+    
+    def _process_siri_dream_message_sync(self, message_id: str, text: str):
+        """同步处理 Siri Dream 消息，等待完成后返回结果"""
+        import subprocess
+        import re
+        import json
+        
+        try:
+            import sys
+            sys.path.insert(0, "/root/.openclaw/workspace")
+            import siri_dream_manager
+            manager = siri_dream_manager.manager
+            
+            # 更新状态为处理中
+            manager['update_message_status'](message_id, 'processing')
+            
+            # 获取提示词
+            system_prompt = manager['get_system_prompt']()
+            full_prompt = system_prompt.format(message=text)
+            
+            # 调用 OpenClaw Agent（同步等待，超时 90 秒）
+            cmd = [
+                '/root/.nvm/versions/node/v22.22.0/bin/openclaw',
+                'agent',
+                '--agent', 'dummy',
+                '-m', full_prompt
+            ]
+            
+            print(f"🔧 开始处理消息：{message_id}")
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=90)
+            output = result.stdout + result.stderr
+            output = output.strip()
+            
+            # 尝试提取 JSON
+            json_match = re.search(r'\{[\s\S]*\}', output)
+            
+            result_data = {}
+            if json_match:
+                try:
+                    result_data = json.loads(json_match.group(0))
+                    print(f"✅ Siri Dream 处理完成（JSON）：{message_id}")
+                except json.JSONDecodeError:
+                    result_data = {'message': output}
+                    print(f"⚠️ Siri Dream 使用纯文本：{message_id}")
+            else:
+                result_data = {'message': output}
+                print(f"✅ Siri Dream 处理完成（纯文本）：{message_id}")
+            
+            # 更新状态
+            manager['update_message_status'](message_id, 'completed', result_data)
+            return result_data
+        
+        except subprocess.TimeoutExpired:
+            error_result = {"error": "处理超时（90 秒）"}
+            manager['update_message_status'](message_id, 'failed', error_result)
+            print(f"❌ Siri Dream 处理超时：{message_id}")
+            return error_result
+        except Exception as e:
+            error_result = {"error": str(e)}
+            manager['update_message_status'](message_id, 'failed', error_result)
+            print(f"❌ Siri Dream 处理失败 {message_id}: {e}")
+            return error_result
     
     def handle_siri_dream_delete(self, path):
         """处理 Siri Dream DELETE 请求"""

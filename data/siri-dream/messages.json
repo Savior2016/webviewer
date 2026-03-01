@@ -1,5 +1,50 @@
 [
   {
+    "id": "ad765554-a1b8-4e4f-88a2-208e985bd660",
+    "text": "让他帮我看一下我的感冒药在哪儿",
+    "source": "api",
+    "timestamp": 1772376872,
+    "created_at": "2026-03-01 22:54:32",
+    "status": "completed",
+    "result": {
+      "message": "根据之前的记录，你的感冒药放在药箱。需要我帮你查看其他物品的位置吗？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
+    "id": "04a81465-fe54-49a9-a0d8-b54de23f7ba9",
+    "text": "哎呀让他帮我看一下我的感冒药在哪儿",
+    "source": "api",
+    "timestamp": 1772376842,
+    "created_at": "2026-03-01 22:54:02",
+    "status": "completed",
+    "result": {
+      "message": "根据之前的记录，你的感冒药放在药箱。需要我帮你查看其他物品的位置吗？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
+    "id": "3a9dc726-2d64-4cf0-ae71-6b747a45f4b1",
+    "text": "你啊帮我看一下我的感冒药在哪里",
+    "source": "api",
+    "timestamp": 1772376460,
+    "created_at": "2026-03-01 22:47:40",
+    "status": "completed",
+    "result": {
+      "message": "根据之前的记录，你的感冒药放在药箱。需要我帮你查看其他物品的位置吗？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
     "id": "7e3048fd-480f-4d4a-9223-bfb2bf0db496",
     "text": "你帮我看一下感冒药在哪里",
     "source": "api",
@@ -277,34 +322,6 @@
     "source": "api",
     "timestamp": 1772360239,
     "created_at": "2026-03-01 18:17:19",
-    "status": "failed",
-    "result": {
-      "error": "'\\n  \"success\"'"
-    },
-    "metadata": {
-      "source": "web"
-    }
-  },
-  {
-    "id": "7d15c2d2-1235-47ac-b47d-92966c578207",
-    "text": "测试",
-    "source": "api",
-    "timestamp": 1772360238,
-    "created_at": "2026-03-01 18:17:18",
-    "status": "failed",
-    "result": {
-      "error": "'\\n  \"success\"'"
-    },
-    "metadata": {
-      "source": "web"
-    }
-  },
-  {
-    "id": "d938732e-263a-4fdf-bb62-b46489299370",
-    "text": "测试 API 功能",
-    "source": "api",
-    "timestamp": 1772360082,
-    "created_at": "2026-03-01 18:14:42",
     "status": "failed",
     "result": {
       "error": "'\\n  \"success\"'"
