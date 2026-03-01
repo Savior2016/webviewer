@@ -254,7 +254,7 @@
         const hasNewMessage = currentCount > lastMessageCount;
         lastMessageCount = currentCount;
 
-        container.innerHTML = messages.map((msg, index) => {
+        container.innerHTML = allMessages.map((msg, index) => {
           let statusClass = 'status-pending';
           let statusText = '⏳ 待处理';
           let statusColor = 'text-amber-600';
