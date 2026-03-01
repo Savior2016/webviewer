@@ -37,6 +37,13 @@ data/*.db
 data/cherry-pick/*.json
 data/bydesign/*.json
 
+# Backup files
+*.bak
+server_fixed.py
+
+# Generated reports
+www/reports/report_*.html
+
 # Logs
 *.log
 logs/
