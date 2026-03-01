@@ -1,8 +1,0 @@
-{
-  "msg_id": "b49945dd-dc3a-433b-acbe-b5e9bda7fbc6",
-  "original_message": "你好",
-  "success": false,
-  "result": "EOF occurred in violation of protocol (_ssl.c:2437)",
-  "timestamp": 1772173772,
-  "processed": true
-}

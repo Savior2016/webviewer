@@ -1,8 +1,0 @@
-{
-  "msg_id": "8591891b-a6d3-4944-a339-049869f74d02",
-  "original_message": "我要出差 3 天，帮我创建一个出行清单",
-  "success": false,
-  "result": "invalid syntax. Perhaps you forgot a comma? (message_engine.py, line 211)",
-  "timestamp": 1772164704,
-  "processed": true
-}

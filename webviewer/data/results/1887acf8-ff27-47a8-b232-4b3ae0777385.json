@@ -1,9 +1,0 @@
-{
-  "msg_id": "1887acf8-ff27-47a8-b232-4b3ae0777385",
-  "original_message": "hi，你叫什么名字",
-  "processed_by": "error",
-  "timestamp": 1772258387,
-  "processing": false,
-  "success": false,
-  "message": "处理失败：[Errno 2] No such file or directory: 'openclaw'"
-}
