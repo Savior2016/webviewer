@@ -187,6 +187,8 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
                 self.handle_cherry_pick_api(path, query)
             elif path.startswith("/bydesign/api/"):
                 self.handle_bydesign_api(path, query)
+            elif path.startswith("/siri-dream/api/"):
+                self.handle_siri_dream_api(path, query)
             else:
                 self.serve_static_file(path, WEB_ROOT)
         except Exception as e:
@@ -291,6 +293,8 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
                 self.handle_cherry_pick_post(path, data)
             elif path.startswith("/bydesign/api/"):
                 self.handle_bydesign_post(path, data)
+            elif path == "/siri-dream/api/message":
+                self.handle_siri_dream_message(data)
             else:
                 self.send_response(404)
                 self.end_headers()
@@ -341,6 +345,8 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
                 self.handle_cherry_pick_delete(path)
             elif path.startswith("/bydesign/api/"):
                 self.handle_bydesign_delete(path)
+            elif path.startswith("/siri-dream/api/messages/"):
+                self.handle_siri_dream_delete(path)
             else:
                 self.send_response(404)
                 self.end_headers()
@@ -845,6 +851,160 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+    
+    # ========== Siri Dream API Handlers ==========
+    def handle_siri_dream_api(self, path, query):
+        """处理 Siri Dream API GET 请求"""
+        try:
+            import sys
+            sys.path.insert(0, "/root/.openclaw/workspace")
+            from siri_dream_manager import manager
+            
+            response = {"success": False, "data": None}
+            
+            if path == "/siri-dream/api/messages":
+                limit = int(query.get("limit", [50])[0])
+                offset = int(query.get("offset", [0])[0])
+                response["data"] = manager.get_messages(limit, offset)
+                response["success"] = True
+            
+            elif path == "/siri-dream/api/stats":
+                response["data"] = manager.get_statistics()
+                response["success"] = True
+            
+            elif path.startswith("/siri-dream/api/messages/"):
+                message_id = path.split("/")[-1]
+                message = manager.get_message(message_id)
+                if message:
+                    response["data"] = message
+                    response["success"] = True
+                else:
+                    response["error"] = "消息不存在"
+            
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(json.dumps(response, ensure_ascii=False).encode("utf-8"))
+        
+        except Exception as e:
+            print(f"❌ Siri Dream API 错误：{e}")
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode("utf-8"))
+    
+    def handle_siri_dream_message(self, data):
+        """处理 Siri Dream 消息"""
+        try:
+            import sys
+            sys.path.insert(0, "/root/.openclaw/workspace")
+            from siri_dream_manager import manager
+            
+            text = data.get('text', '')
+            metadata = data.get('metadata', {})
+            
+            if not text:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": False, "error": "消息内容不能为空"}).encode("utf-8"))
+                return
+            
+            # 添加消息
+            message = manager.add_message(text, 'api', metadata)
+            
+            # 异步处理消息
+            import threading
+            thread = threading.Thread(
+                target=self._process_siri_dream_message,
+                args=(message['id'], text),
+                daemon=True
+            )
+            thread.start()
+            
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                "success": True,
+                "message_id": message['id'],
+                "message": "消息已接收，正在处理..."
+            }, ensure_ascii=False).encode("utf-8"))
+        
+        except Exception as e:
+            print(f"❌ Siri Dream 消息处理失败：{e}")
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode("utf-8"))
+    
+    def _process_siri_dream_message(self, message_id: str, text: str):
+        """后台处理 Siri Dream 消息"""
+        try:
+            import sys
+            sys.path.insert(0, "/root/.openclaw/workspace")
+            from siri_dream_manager import manager
+            
+            # 更新状态为处理中
+            manager.update_message_status(message_id, 'processing')
+            
+            # 获取提示词
+            system_prompt = manager.get_system_prompt()
+            full_prompt = system_prompt.format(message=text)
+            
+            # 调用 OpenClaw Agent
+            import subprocess
+            cmd = [
+                '/root/.nvm/versions/node/v22.22.0/bin/openclaw',
+                'agent',
+                '--agent', 'dummy',
+                '-m', full_prompt
+            ]
+            
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+            output = result.stdout + result.stderr
+            
+            # 提取 JSON
+            import re
+            json_match = re.search(r'\{.*\}', output, re.DOTALL)
+            
+            if json_match:
+                result_data = json.loads(json_match.group(0))
+                manager.update_message_status(message_id, 'completed', result_data)
+                print(f"✅ Siri Dream 处理完成：{message_id}")
+            else:
+                manager.update_message_status(message_id, 'completed', {"message": output.strip()})
+        
+        except subprocess.TimeoutExpired:
+            manager.update_message_status(message_id, 'failed', {"error": "处理超时"})
+            print(f"❌ Siri Dream 处理超时：{message_id}")
+        except Exception as e:
+            manager.update_message_status(message_id, 'failed', {"error": str(e)})
+            print(f"❌ Siri Dream 处理失败 {message_id}: {e}")
+    
+    def handle_siri_dream_delete(self, path):
+        """处理 Siri Dream DELETE 请求"""
+        try:
+            import sys
+            sys.path.insert(0, "/root/.openclaw/workspace")
+            from siri_dream_manager import manager
+            
+            message_id = path.split("/")[-1]
+            result = manager.delete_message(message_id)
+            
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(json.dumps({"success": result}, ensure_ascii=False).encode("utf-8"))
+        
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode("utf-8"))
     
     def serve_static_file(self, path, root):
         """服务静态文件"""
