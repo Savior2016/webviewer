@@ -50,7 +50,7 @@
       <p class="text-blue-100 text-base sm:text-lg font-light mb-3">SiriFuture</p>
       <div class="w-16 h-1 bg-gradient-to-r from-blue-400 to-purple-400 mx-auto rounded-full"></div>
       <p class="text-blue-200/70 text-xs sm:text-sm mt-3">Siri 会的我都会啊，我会的 Siri 不会啊</p>
-      <a href="/" class="inline-flex items-center gap-2 text-blue-200 hover:text-white transition-colors mt-4 text-sm"><span>←</span> 返回首页</a>
+      <a href="https://43.153.153.62/" class="inline-flex items-center gap-2 text-blue-200 hover:text-white transition-colors mt-4 text-sm"><span>←</span> 返回首页</a>
     </header>
 
     <!-- 统计卡片 -->
@@ -112,24 +112,43 @@
       </button>
       <div id="apiInfo" class="hidden mt-4 pt-4 border-t border-gray-200">
         <div class="api-card rounded-xl p-4 sm:p-6 text-white">
-          <div class="space-y-3 text-sm">
+          <div class="space-y-4 text-sm">
             <div>
               <div class="text-blue-200 mb-1">📡 API 地址</div>
               <div class="code-block">POST https://&lt;你的 IP&gt;/siri-dream/api/message</div>
             </div>
             <div>
-              <div class="text-blue-200 mb-1">📝 请求格式</div>
+              <div class="text-blue-200 mb-1">📤 发送消息</div>
               <div class="code-block">{
   "text": "要处理的消息内容",
   "metadata": { "source": "app", "user": "username" }
 }</div>
+              <div class="text-blue-300 mt-2 text-xs">✅ 立即返回 message_id 和 status</div>
+            </div>
+            <div>
+              <div class="text-blue-200 mb-1">🔍 查询结果（使用相同的 API）</div>
+              <div class="code-block">{
+  "message_id": "从发送消息返回的 ID"
+}</div>
+              <div class="text-blue-300 mt-2 text-xs">✅ 返回处理状态和结果</div>
+            </div>
+            <div>
+              <div class="text-blue-200 mb-1">📊 状态说明</div>
+              <div class="grid grid-cols-2 gap-2 text-xs mt-2">
+                <div class="bg-amber-500/20 px-2 py-1 rounded">⏳ pending - 等待处理</div>
+                <div class="bg-blue-500/20 px-2 py-1 rounded">🔄 processing - 处理中</div>
+                <div class="bg-green-500/20 px-2 py-1 rounded">✅ completed - 已完成</div>
+                <div class="bg-red-500/20 px-2 py-1 rounded">❌ failed - 处理失败</div>
+              </div>
             </div>
             <div>
               <div class="text-blue-200 mb-1">📤 响应格式</div>
               <div class="code-block">{
   "success": true,
   "message_id": "uuid",
-  "message": "处理结果"
+  "status": "processing/completed/failed",
+  "message": "处理结果",
+  "result": {...}
 }</div>
             </div>
           </div>

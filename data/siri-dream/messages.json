@@ -1,12 +1,101 @@
 [
   {
+    "id": "b3ad1f80-173a-4a8e-9af2-f04764ffa60e",
+    "text": "记下我的键盘就在电脑桌上",
+    "source": "api",
+    "timestamp": 1772382901,
+    "created_at": "2026-03-02 00:35:01",
+    "status": "completed",
+    "result": {
+      "message": "已记录：键盘放在电脑桌上。需要我帮你查看其他物品的位置吗？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
+    "id": "ce244655-6e01-4b76-9ba9-e30053396137",
+    "text": "你好记下来我的笔记本放着的次卧",
+    "source": "api",
+    "timestamp": 1772382593,
+    "created_at": "2026-03-02 00:29:53",
+    "status": "completed",
+    "result": {
+      "message": "已记录：笔记本放在次卧。需要我帮你查看其他物品的位置吗？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
+    "id": "0cea54bc-5b4b-4c50-8701-12f4003efe16",
+    "text": "记录一下我的笔记本电脑放到了次卧",
+    "source": "api",
+    "timestamp": 1772382462,
+    "created_at": "2026-03-02 00:27:42",
+    "status": "completed",
+    "result": {
+      "message": "已记录：笔记本电脑放在次卧。需要我帮你查看其他物品的位置吗？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
+    "id": "421109e6-81c1-46b6-b15b-76cd10e7e9c9",
+    "text": "测试 POST 查询",
+    "source": "api",
+    "timestamp": 1772382402,
+    "created_at": "2026-03-02 00:26:42",
+    "status": "completed",
+    "result": {
+      "message": "收到你的测试消息了。我是 WebViewer 助手 Dummy，可以帮你处理出行、搬家和物品记录等请求。有什么需要帮忙的吗？"
+    },
+    "metadata": {}
+  },
+  {
+    "id": "ef94fd8c-cd6b-4ad0-8853-b5672808db93",
+    "text": "你好",
+    "source": "api",
+    "timestamp": 1772382381,
+    "created_at": "2026-03-02 00:26:21",
+    "status": "completed",
+    "result": {
+      "message": "你好，我是 WebViewer 助手 Dummy，可以帮你处理出行、搬家和物品记录等请求。有什么需要帮忙的吗？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
+    "id": "ab144273-3e40-4451-abe2-4e103fda68bd",
+    "text": "你好",
+    "source": "api",
+    "timestamp": 1772382336,
+    "created_at": "2026-03-02 00:25:36",
+    "status": "completed",
+    "result": {
+      "message": "你好，我是 WebViewer 助手 Dummy，可以帮你处理出行、搬家和物品记录等请求。有什么需要帮忙的吗？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
     "id": "b6d978d0-bcac-4ffd-a18d-14342f1de491",
     "text": "你好",
     "source": "api",
     "timestamp": 1772382219,
     "created_at": "2026-03-02 00:23:39",
-    "status": "processing",
-    "result": null,
+    "status": "completed",
+    "result": {
+      "message": "你好，我是 WebViewer 助手 Dummy，可以帮你处理出行、搬家和物品记录等请求。有什么需要帮忙的吗？"
+    },
     "metadata": {
       "user": "jiukui",
       "source": "apple"
