@@ -24,11 +24,27 @@ import sys
 import importlib
 import threading
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+import logging
 
 PORT = 443
 WEB_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "www")
 CERT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "selfsigned.crt")
 KEY_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "selfsigned.key")
+
+# 日志配置
+LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "server.log")
+MAX_LOG_LINES = 500  # 最多保留 500 行日志
+
+# 配置日志
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(LOG_FILE, encoding='utf-8'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 
 # 线程池 - 限制后台任务数量，防止资源耗尽
 # 最大 5 个 worker 线程，队列最多 10 个任务
@@ -63,35 +79,37 @@ def get_bydesign_manager():
     return manager
 
 SETTINGS_FILE = Path("/root/.openclaw/workspace/data/settings.json")
+SIRI_DREAM_SETTINGS_FILE = Path("/root/.openclaw/workspace/data/siri-dream/settings.json")
 
 def get_system_prompt():
-    """获取系统提示词"""
+    """获取系统提示词（Siri Dream 模块）"""
     try:
-        if SETTINGS_FILE.exists():
-            with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
+        if SIRI_DREAM_SETTINGS_FILE.exists():
+            with open(SIRI_DREAM_SETTINGS_FILE, 'r', encoding='utf-8') as f:
                 settings = json.load(f)
                 return settings.get('system_prompt', '')
     except Exception as e:
-        print(f"⚠️  读取设置失败：{e}")
+        logger.info(f"⚠️  读取设置失败：{e}")
     return ''
 
 def save_system_prompt(prompt: str):
-    """保存系统提示词"""
+    """保存系统提示词（Siri Dream 模块）"""
     try:
-        SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        SIRI_DREAM_SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
         settings = {'system_prompt': prompt}
-        with open(SETTINGS_FILE, 'w', encoding='utf-8') as f:
+        with open(SIRI_DREAM_SETTINGS_FILE, 'w', encoding='utf-8') as f:
             json.dump(settings, f, ensure_ascii=False, indent=2)
+        logger.info(f"💾 Siri Dream 提示词已保存到：{SIRI_DREAM_SETTINGS_FILE}")
         return True
     except Exception as e:
-        print(f"❌ 保存设置失败：{e}")
+        logger.info(f"❌ 保存设置失败：{e}")
         return False
 
 def execute_project_save(project: str, result: dict):
     """执行项目保存操作（带超时保护）"""
     data = result.get('data', {})
     
-    print(f"📝 执行 {project} 保存：data={data}")
+    logger.info(f"📝 执行 {project} 保存：data={data}")
     
     try:
         if project == 'bydesign':
@@ -100,17 +118,17 @@ def execute_project_save(project: str, result: dict):
             if data.get('action') == 'add_checklist_items' or 'items_added' in data:
                 items = data.get('items_added', [])
                 added = manager.add_checklist_items_batch(items)
-                print(f"✅ By Design 已批量添加 {len(added)} 项检查")
+                logger.info(f"✅ By Design 已批量添加 {len(added)} 项检查")
             elif data.get('action') == 'add_checklist':
                 text = data.get('text', data.get('item', ''))
                 if text:
                     item = manager.add_checklist_item(text)
-                    print(f"✅ By Design 已添加检查项：{item['id']}")
+                    logger.info(f"✅ By Design 已添加检查项：{item['id']}")
             else:
                 trip_name = data.get('name', '出行')
                 description = data.get('description', '')
                 trip = manager.create_trip(name=trip_name, description=description)
-                print(f"✅ By Design 已创建出行：{trip['id']}")
+                logger.info(f"✅ By Design 已创建出行：{trip['id']}")
         
         elif project == 'cherry_pick':
             manager = get_cherry_pick_manager()
@@ -123,7 +141,7 @@ def execute_project_save(project: str, result: dict):
                     before_location=data.get('before_location', ''),
                     after_location=data.get('after_location', '')
                 )
-                print(f"✅ Cherry Pick 已记录物品：{item['id']}")
+                logger.info(f"✅ Cherry Pick 已记录物品：{item['id']}")
         
         elif project == 'momhand':
             manager = get_momhand_manager()
@@ -133,10 +151,10 @@ def execute_project_save(project: str, result: dict):
                 'location': data.get('location', ''),
                 'usage': data.get('usage', '')
             })
-            print(f"✅ Momhand 已添加物品：{item['id']}")
+            logger.info(f"✅ Momhand 已添加物品：{item['id']}")
     
     except Exception as e:
-        print(f"❌ 保存失败：{e}")
+        logger.info(f"❌ 保存失败：{e}")
 
 def execute_save_action(result: dict):
     """执行保存操作（兼容旧代码）"""
@@ -181,6 +199,8 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
                 self.handle_get_settings()
             elif path == "/api/message-result":
                 self.handle_message_result(query)
+            elif path == "/api/logs":
+                self.handle_get_logs(query)
             elif path.startswith("/momhand/api/"):
                 self.handle_momhand_api(path, query)
             elif path.startswith("/cherry-pick/api/"):
@@ -192,7 +212,7 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
             else:
                 self.serve_static_file(path, WEB_ROOT)
         except Exception as e:
-            print(f"❌ GET 请求处理失败：{e}")
+            logger.error(f"❌ GET 请求处理失败：{e}")
             self.send_error(500, str(e))
     
     def handle_momhand_api(self, path, query):
@@ -239,7 +259,7 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(json.dumps(response, ensure_ascii=False).encode("utf-8"))
         
         except Exception as e:
-            print(f"❌ momhand API 错误：{e}")
+            logger.info(f"❌ momhand API 错误：{e}")
             self.send_response(500)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
@@ -303,7 +323,7 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
                 self.send_response(404)
                 self.end_headers()
         except Exception as e:
-            print(f"❌ POST 请求处理失败：{e}")
+            logger.info(f"❌ POST 请求处理失败：{e}")
             self.send_error(500, str(e))
     
     def do_PUT(self):
@@ -334,7 +354,7 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
                 self.send_response(404)
                 self.end_headers()
         except Exception as e:
-            print(f"❌ PUT 请求处理失败：{e}")
+            logger.info(f"❌ PUT 请求处理失败：{e}")
             self.send_error(500, str(e))
     
     def do_DELETE(self):
@@ -355,7 +375,7 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
                 self.send_response(404)
                 self.end_headers()
         except Exception as e:
-            print(f"❌ DELETE 请求处理失败：{e}")
+            logger.info(f"❌ DELETE 请求处理失败：{e}")
             self.send_error(500, str(e))
     
     def handle_get_prompt(self, path):
@@ -398,14 +418,14 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
             
             prompt_file = f"/root/.openclaw/workspace/data/prompts/{project}.json"
             
-            print(f"💾 保存 {project} 提示词到：{prompt_file}")
-            print(f"   数据：{data}")
+            logger.info(f"💾 保存 {project} 提示词到：{prompt_file}")
+            logger.info(f"   数据：{data}")
             
             config = {'project': project, 'name': project, 'system_prompt': ''}
             if os.path.exists(prompt_file):
                 with open(prompt_file, 'r', encoding='utf-8') as f:
                     config = json.load(f)
-                print(f"   现有配置：{list(config.keys())}")
+                logger.info(f"   现有配置：{list(config.keys())}")
             
             prompt = data.get('prompt', '')
             if not prompt:
@@ -416,7 +436,7 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
             with open(prompt_file, 'w', encoding='utf-8') as f:
                 json.dump(config, f, ensure_ascii=False, indent=2)
             
-            print(f"   ✅ 保存成功")
+            logger.info(f"   ✅ 保存成功")
             
             self.send_response(200)
             self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -424,7 +444,7 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps({"success": True}, ensure_ascii=False).encode("utf-8"))
         except Exception as e:
-            print(f"   ❌ 保存失败：{e}")
+            logger.info(f"   ❌ 保存失败：{e}")
             import traceback
             traceback.print_exc()
             self.send_response(500)
@@ -438,9 +458,13 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
     
     def handle_get_settings(self):
-        """获取设置"""
+        """获取设置（WebViewer 主提示词）"""
         try:
-            prompt = get_system_prompt()
+            prompt = ''
+            if SETTINGS_FILE.exists():
+                with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
+                    settings = json.load(f)
+                    prompt = settings.get('system_prompt', '')
             self.send_response(200)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Access-Control-Allow-Origin", "*")
@@ -456,20 +480,19 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(json.dumps({"error": str(e)}, ensure_ascii=False).encode("utf-8"))
     
     def handle_save_settings(self, data):
-        """保存设置"""
+        """保存设置（WebViewer 主提示词）"""
         try:
             prompt = data.get('system_prompt', '')
-            if save_system_prompt(prompt):
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.send_header("Access-Control-Allow-Origin", "*")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": True}, ensure_ascii=False).encode("utf-8"))
-            else:
-                self.send_response(500)
-                self.send_header("Content-Type", "application/json")
-                self.end_headers()
-                self.wfile.write(json.dumps({"error": "保存失败"}, ensure_ascii=False).encode("utf-8"))
+            SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
+            settings = {'system_prompt': prompt}
+            with open(SETTINGS_FILE, 'w', encoding='utf-8') as f:
+                json.dump(settings, f, ensure_ascii=False, indent=2)
+            logger.info(f"💾 WebViewer 提示词已保存到：{SETTINGS_FILE}")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(json.dumps({"success": True}, ensure_ascii=False).encode("utf-8"))
         except Exception as e:
             self.send_response(500)
             self.send_header("Content-Type", "application/json")
@@ -502,6 +525,41 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
                 self.send_header("Access-Control-Allow-Origin", "*")
                 self.end_headers()
                 self.wfile.write(json.dumps({"success": True, "processed": False}, ensure_ascii=False).encode("utf-8"))
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": str(e)}, ensure_ascii=False).encode("utf-8"))
+    
+    def handle_get_logs(self, query):
+        """处理日志获取请求"""
+        try:
+            lines = int(query.get('lines', [MAX_LOG_LINES])[0])
+            
+            if not os.path.exists(LOG_FILE):
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": True, "logs": [], "info": "日志文件尚未创建"}, ensure_ascii=False).encode("utf-8"))
+                return
+            
+            with open(LOG_FILE, 'r', encoding='utf-8') as f:
+                all_lines = f.readlines()
+            
+            # 获取最后 N 行
+            log_lines = all_lines[-lines:] if len(all_lines) > lines else all_lines
+            
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                "success": True,
+                "logs": [line.strip() for line in log_lines],
+                "total_lines": len(all_lines),
+                "returned_lines": len(log_lines)
+            }, ensure_ascii=False).encode("utf-8"))
         except Exception as e:
             self.send_response(500)
             self.send_header("Content-Type", "application/json")
@@ -935,7 +993,7 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(json.dumps(response, ensure_ascii=False).encode("utf-8"))
         
         except Exception as e:
-            print(f"❌ Siri Dream API 错误：{e}")
+            logger.info(f"❌ Siri Dream API 错误：{e}")
             import traceback
             traceback.print_exc()
             self.send_response(500)
@@ -987,7 +1045,7 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
             }, ensure_ascii=False).encode("utf-8"))
         
         except Exception as e:
-            print(f"❌ Siri Dream 消息处理失败：{e}")
+            logger.info(f"❌ Siri Dream 消息处理失败：{e}")
             import traceback
             traceback.print_exc()
             self.send_response(500)
@@ -1068,14 +1126,14 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(json.dumps(response, ensure_ascii=False).encode("utf-8"))
         
         except Exception as e:
-            print(f"❌ Siri Dream 查询失败：{e}")
+            logger.info(f"❌ Siri Dream 查询失败：{e}")
             import traceback
             traceback.print_exc()
             self.send_response(500)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode("utf-8"))
-            print(f"❌ Siri Dream 消息处理失败：{e}")
+            logger.info(f"❌ Siri Dream 消息处理失败：{e}")
             import traceback
             traceback.print_exc()
             self.send_response(500)
@@ -1127,22 +1185,22 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
                         manager['update_message_status'](message_id, 'completed', result_data)
                     else:
                         manager['update_message_status'](message_id, 'completed', {'message': output})
-                    print(f"✅ Siri Dream 处理完成：{message_id}")
+                    logger.info(f"✅ Siri Dream 处理完成：{message_id}")
                 except json.JSONDecodeError as e:
                     # JSON 解析失败，使用纯文本
                     manager['update_message_status'](message_id, 'completed', {'message': output})
-                    print(f"⚠️ Siri Dream JSON 解析失败，使用纯文本：{message_id}")
+                    logger.info(f"⚠️ Siri Dream JSON 解析失败，使用纯文本：{message_id}")
             else:
                 # 没有 JSON，使用纯文本
                 manager['update_message_status'](message_id, 'completed', {'message': output})
-                print(f"✅ Siri Dream 处理完成（纯文本）：{message_id}")
+                logger.info(f"✅ Siri Dream 处理完成（纯文本）：{message_id}")
         
         except subprocess.TimeoutExpired:
             manager['update_message_status'](message_id, 'failed', {"error": "处理超时"})
-            print(f"❌ Siri Dream 处理超时：{message_id}")
+            logger.info(f"❌ Siri Dream 处理超时：{message_id}")
         except Exception as e:
             manager['update_message_status'](message_id, 'failed', {"error": str(e)})
-            print(f"❌ Siri Dream 处理失败 {message_id}: {e}")
+            logger.info(f"❌ Siri Dream 处理失败 {message_id}: {e}")
     
     def _process_siri_dream_message_sync(self, message_id: str, text: str):
         """同步处理 Siri Dream 消息，等待完成后返回结果"""
@@ -1159,9 +1217,25 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
             # 更新状态为处理中
             manager['update_message_status'](message_id, 'processing')
             
-            # 获取提示词
+            # 获取 Siri Dream 模块的提示词
             system_prompt = manager['get_system_prompt']()
-            full_prompt = system_prompt.format(message=text)
+            
+            # 构建完整的提示词（系统提示词 + 用户消息）
+            # 支持两种格式：
+            # 1. 如果提示词包含 {message} 占位符，使用 format 替换
+            # 2. 否则，将用户消息附加到提示词后面
+            if '{message}' in system_prompt:
+                full_prompt = system_prompt.format(message=text)
+            else:
+                full_prompt = f"""{system_prompt}
+
+用户消息：
+{text}
+
+请根据以上提示词和用户消息进行处理，返回有帮助的回复。"""
+            
+            logger.info(f"📝 Siri Dream 使用提示词：{system_prompt[:50]}...")
+            logger.info(f"🔧 开始处理消息：{message_id}")
             
             # 调用 OpenClaw Agent（同步等待，超时 90 秒）
             cmd = [
@@ -1171,7 +1245,6 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
                 '-m', full_prompt
             ]
             
-            print(f"🔧 开始处理消息：{message_id}")
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=90)
             output = result.stdout + result.stderr
             output = output.strip()
@@ -1183,13 +1256,13 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
             if json_match:
                 try:
                     result_data = json.loads(json_match.group(0))
-                    print(f"✅ Siri Dream 处理完成（JSON）：{message_id}")
+                    logger.info(f"✅ Siri Dream 处理完成（JSON）：{message_id}")
                 except json.JSONDecodeError:
                     result_data = {'message': output}
-                    print(f"⚠️ Siri Dream 使用纯文本：{message_id}")
+                    logger.info(f"⚠️ Siri Dream 使用纯文本：{message_id}")
             else:
                 result_data = {'message': output}
-                print(f"✅ Siri Dream 处理完成（纯文本）：{message_id}")
+                logger.info(f"✅ Siri Dream 处理完成（纯文本）：{message_id}")
             
             # 更新状态
             manager['update_message_status'](message_id, 'completed', result_data)
@@ -1198,12 +1271,12 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
         except subprocess.TimeoutExpired:
             error_result = {"error": "处理超时（90 秒）"}
             manager['update_message_status'](message_id, 'failed', error_result)
-            print(f"❌ Siri Dream 处理超时：{message_id}")
+            logger.info(f"❌ Siri Dream 处理超时：{message_id}")
             return error_result
         except Exception as e:
             error_result = {"error": str(e)}
             manager['update_message_status'](message_id, 'failed', error_result)
-            print(f"❌ Siri Dream 处理失败 {message_id}: {e}")
+            logger.info(f"❌ Siri Dream 处理失败 {message_id}: {e}")
             return error_result
     
     def handle_siri_dream_delete(self, path):
@@ -1269,7 +1342,7 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
             self.send_error(404, "File not found")
     
     def log_message(self, format, *args):
-        print(f"[WebViewer] {self.log_date_time_string()} - {self.address_string()} - {format%args}")
+        logger.info(f"[WebViewer] {self.log_date_time_string()} - {self.address_string()} - {format%args}")
     
     def handle_send_message(self, data):
         """
@@ -1305,10 +1378,10 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
                 self._process_message_async,
                 msg_id, message
             )
-            print(f"📤 消息已提交线程池处理：{msg_id}")
+            logger.info(f"📤 消息已提交线程池处理：{msg_id}")
         
         except Exception as e:
-            print(f"✗ 提交消息失败：{e}")
+            logger.info(f"✗ 提交消息失败：{e}")
             import traceback
             traceback.print_exc()
             
@@ -1329,13 +1402,13 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
         添加超时保护
         """
         try:
-            print(f"🔄 开始后台处理消息：{msg_id}")
+            logger.info(f"🔄 开始后台处理消息：{msg_id}")
             
             import sys
             sys.path.insert(0, "/root/.openclaw/workspace")
             from openclaw_agent_processor import process_via_openclaw_agent
             
-            print(f"📤 发送消息到 OpenClaw Agent: {message[:50]}...")
+            logger.info(f"📤 发送消息到 OpenClaw Agent: {message[:50]}...")
             
             # 处理消息（带超时）
             result = process_via_openclaw_agent(message)
@@ -1357,17 +1430,17 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
             with open(result_file, 'w', encoding='utf-8') as f:
                 json.dump(result_data, f, ensure_ascii=False, indent=2)
             
-            print(f"✅ OpenClaw 处理完成：{msg_id} -> {result.get('project', 'unknown')}")
+            logger.info(f"✅ OpenClaw 处理完成：{msg_id} -> {result.get('project', 'unknown')}")
             
             if result.get('project') and result.get('data'):
-                print(f"📝 执行保存操作：project={result['project']}, action={result.get('action')}")
+                logger.info(f"📝 执行保存操作：project={result['project']}, action={result.get('action')}")
                 execute_save_action(result)
             
         except FuturesTimeoutError:
-            print(f"❌ 后台处理超时 {msg_id}")
+            logger.info(f"❌ 后台处理超时 {msg_id}")
             self._save_error_result(msg_id, message, "处理超时")
         except Exception as e:
-            print(f"❌ 后台处理失败 {msg_id}: {e}")
+            logger.info(f"❌ 后台处理失败 {msg_id}: {e}")
             import traceback
             traceback.print_exc()
             self._save_error_result(msg_id, message, str(e))
@@ -1399,22 +1472,22 @@ if __name__ == "__main__":
     context.load_cert_chain(certfile=CERT_FILE, keyfile=KEY_FILE)
     httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
     
-    print(f"🔒 WebViewer HTTPS 服务已启动（修复版）：https://0.0.0.0:{PORT}")
-    print(f"📂 网站根目录：{WEB_ROOT}")
-    print(f"🧵 线程池：最大 5 worker，队列 10 任务")
-    print(f"⏱️  请求超时：{REQUEST_TIMEOUT}秒")
-    print(f"🏠 首页：https://<IP>/")
-    print(f"📦 momhand API: https://<IP>/momhand/api/items")
-    print(f"📦 momhand Web: https://<IP>/momhand/")
-    print(f"🏠 cherry-pick API: https://<IP>/cherry-pick/api/moves")
-    print(f"🏠 cherry-pick Web: https://<IP>/cherry-pick/")
-    print(f"✈️ bydesign API: https://<IP>/bydesign/api/checklist")
-    print(f"✈️ bydesign Web: https://<IP>/bydesign/")
+    logger.info(f"🔒 WebViewer HTTPS 服务已启动（修复版）：https://0.0.0.0:{PORT}")
+    logger.info(f"📂 网站根目录：{WEB_ROOT}")
+    logger.info(f"🧵 线程池：最大 5 worker，队列 10 任务")
+    logger.info(f"⏱️  请求超时：{REQUEST_TIMEOUT}秒")
+    logger.info(f"🏠 首页：https://<IP>/")
+    logger.info(f"📦 momhand API: https://<IP>/momhand/api/items")
+    logger.info(f"📦 momhand Web: https://<IP>/momhand/")
+    logger.info(f"🏠 cherry-pick API: https://<IP>/cherry-pick/api/moves")
+    logger.info(f"🏠 cherry-pick Web: https://<IP>/cherry-pick/")
+    logger.info(f"✈️ bydesign API: https://<IP>/bydesign/api/checklist")
+    logger.info(f"✈️ bydesign Web: https://<IP>/bydesign/")
     
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
-        print("\n👋 服务正在关闭...")
+        logger.info("\n👋 服务正在关闭...")
         executor.shutdown(wait=False)
         httpd.shutdown()
-        print("✅ 服务已停止")
+        logger.info("✅ 服务已停止")
