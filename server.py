@@ -31,6 +31,32 @@ WEB_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "www")
 CERT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "selfsigned.crt")
 KEY_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "selfsigned.key")
 
+# ========== 安全配置 ==========
+# 允许访问的域名（可根据需要修改）
+ALLOWED_ORIGINS = [
+    'https://43.153.153.62',
+    'https://localhost',
+    'https://127.0.0.1',
+    # 可以添加更多允许的域名
+]
+
+# 速率限制配置（每个 IP 每分钟最大请求数）
+RATE_LIMIT_REQUESTS = 100
+RATE_LIMIT_WINDOW = 60  # 秒
+
+# 敏感 API 路径（需要额外保护）
+SENSITIVE_PATHS = [
+    '/api/settings',
+    '/api/prompts/',
+]
+
+# TLS 安全配置
+TLS_MIN_VERSION = ssl.TLSVersion.TLSv1_2  # 最低 TLS 1.2
+TLS_CIPHERS = 'ECDHE+AESGCM:DHE+AESGCM:ECDHE+CHACHA20:DHE+CHACHA20'  # 安全密码套件
+
+# 请求日志（用于安全审计）
+REQUEST_LOG = {}
+
 # 日志配置
 LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "server.log")
 MAX_LOG_LINES = 500  # 最多保留 500 行日志
@@ -53,6 +79,75 @@ executor = ThreadPoolExecutor(max_workers=5, thread_name_prefix="webviewer-worke
 # 请求超时设置（秒）
 REQUEST_TIMEOUT = 30
 BACKGROUND_TASK_TIMEOUT = 60
+
+# ========== 安全辅助函数 ==========
+import time
+from collections import defaultdict
+from threading import Lock
+
+# 速率限制计数器
+rate_limit_counter = defaultdict(list)
+rate_limit_lock = Lock()
+
+def check_rate_limit(client_ip: str) -> bool:
+    """
+    检查请求速率限制
+    返回: True 表示允许，False 表示超过限制
+    """
+    current_time = time.time()
+    
+    with rate_limit_lock:
+        # 清理过期记录
+        rate_limit_counter[client_ip] = [
+            t for t in rate_limit_counter[client_ip]
+            if current_time - t < RATE_LIMIT_WINDOW
+        ]
+        
+        # 检查是否超限
+        if len(rate_limit_counter[client_ip]) >= RATE_LIMIT_REQUESTS:
+            return False
+        
+        # 记录本次请求
+        rate_limit_counter[client_ip].append(current_time)
+        return True
+
+def validate_origin(origin: str) -> bool:
+    """
+    验证请求来源是否合法
+    """
+    if not origin:
+        return True  # 允许无 origin 的请求（如直接访问）
+    
+    # 检查是否在允许列表中
+    for allowed in ALLOWED_ORIGINS:
+        if origin.startswith(allowed):
+            return True
+    
+    return False
+
+def get_cors_headers(origin: str) -> dict:
+    """
+    生成安全的 CORS 响应头
+    """
+    headers = {}
+    
+    if validate_origin(origin):
+        headers['Access-Control-Allow-Origin'] = origin
+    else:
+        # 对于非法来源，返回第一个允许的域名
+        headers['Access-Control-Allow-Origin'] = ALLOWED_ORIGINS[0]
+    
+    headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+    headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+    headers['Access-Control-Max-Age'] = '86400'  # 24 小时
+    
+    return headers
+
+def log_security_event(event_type: str, client_ip: str, path: str, details: str = ""):
+    """
+    记录安全事件
+    """
+    logger.warning(f"🔒 安全事件 [{event_type}] IP={client_ip} PATH={path} {details}")
 
 def get_momhand_manager():
     """获取最新的物品管理器实例（SQLite 数据库版本）"""
@@ -217,11 +312,79 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
     def address_string(self):
         return self.client_address[0]
     
+    def _send_secure_headers(self, content_type="application/json"):
+        """发送安全响应头"""
+        origin = self.headers.get('Origin', '')
+        cors_headers = get_cors_headers(origin)
+        
+        self.send_header("Content-Type", f"{content_type}; charset=utf-8")
+        for key, value in cors_headers.items():
+            self.send_header(key, value)
+        # 安全相关头
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("X-XSS-Protection", "1; mode=block")
+        self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+        # 增强安全头
+        self.send_header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+        self.send_header("Referrer-Policy", "strict-origin-when-cross-origin")
+        self.send_header("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+    
+    def do_OPTIONS(self):
+        """处理 CORS 预检请求"""
+        origin = self.headers.get('Origin', '')
+        cors_headers = get_cors_headers(origin)
+        
+        self.send_response(200)
+        for key, value in cors_headers.items():
+            self.send_header(key, value)
+        self.end_headers()
+    
+    def _check_request_security(self, path: str) -> bool:
+        """
+        检查请求安全性
+        返回: True 表示安全，False 表示应拒绝
+        """
+        client_ip = self.client_address[0]
+        
+        # 1. 速率限制检查
+        if not check_rate_limit(client_ip):
+            log_security_event("RATE_LIMIT", client_ip, path, "请求过于频繁")
+            self.send_response(429)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                "success": False,
+                "error": "请求过于频繁，请稍后再试"
+            }, ensure_ascii=False).encode("utf-8"))
+            return False
+        
+        # 2. 来源验证（仅对敏感 API）
+        for sensitive in SENSITIVE_PATHS:
+            if path.startswith(sensitive):
+                origin = self.headers.get('Origin', '')
+                if not validate_origin(origin):
+                    log_security_event("INVALID_ORIGIN", client_ip, path, f"origin={origin}")
+                    self.send_response(403)
+                    self.send_header("Content-Type", "application/json")
+                    self.end_headers()
+                    self.wfile.write(json.dumps({
+                        "success": False,
+                        "error": "来源未授权"
+                    }, ensure_ascii=False).encode("utf-8"))
+                    return False
+        
+        return True
+    
     def do_GET(self):
         try:
             parsed = urlparse(self.path)
             path = parsed.path
             query = parse_qs(parsed.query)
+            
+            # 安全检查
+            if not self._check_request_security(path):
+                return
             
             if path.startswith("/api/prompts/"):
                 self.handle_get_prompt(path)
@@ -1352,6 +1515,12 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
                 self.send_response(200)
                 if file_path.endswith(".html"):
                     self.send_header("Content-Type", "text/html; charset=utf-8")
+                    # 为 HTML 页面添加安全头
+                    self.send_header("X-Content-Type-Options", "nosniff")
+                    self.send_header("X-Frame-Options", "DENY")
+                    self.send_header("X-XSS-Protection", "1; mode=block")
+                    self.send_header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+                    self.send_header("Referrer-Policy", "strict-origin-when-cross-origin")
                 elif file_path.endswith(".css"):
                     self.send_header("Content-Type", "text/css")
                 elif file_path.endswith(".js"):
@@ -1500,8 +1669,13 @@ if __name__ == "__main__":
     # 使用修复后的服务器类
     httpd = TimeoutHTTPServer(("", PORT), WebViewerHandler)
     
+    # 增强的 SSL/TLS 配置
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     context.load_cert_chain(certfile=CERT_FILE, keyfile=KEY_FILE)
+    # 设置最低 TLS 版本
+    context.minimum_version = TLS_MIN_VERSION
+    # 设置安全密码套件
+    context.set_ciphers(TLS_CIPHERS)
     httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
     
     logger.info(f"🔒 WebViewer HTTPS 服务已启动（修复版）：https://0.0.0.0:{PORT}")
