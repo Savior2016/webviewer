@@ -41,9 +41,10 @@ ALLOWED_ORIGINS = [
 
 # IP 白名单（留空表示允许所有 IP）
 IP_WHITELIST = [
-    # 示例：'223.104.40.171',
+    '223.104.40.171',  # 中国移动 - 你的手机 IP
+    '127.0.0.1',       # 本地访问
 ]
-ENABLE_IP_WHITELIST = False  # 设为 True 启用 IP 白名单
+ENABLE_IP_WHITELIST = True  # 已启用 IP 白名单
 
 # API Token 认证（用于敏感操作）
 API_TOKENS = {
