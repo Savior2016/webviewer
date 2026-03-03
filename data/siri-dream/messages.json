@@ -1,5 +1,23 @@
 [
   {
+    "id": "4be7ff3b-dac1-40fe-888e-f93cb65a2fda",
+    "text": "测试消息",
+    "source": "api",
+    "timestamp": 1772535949,
+    "created_at": "2026-03-03 19:05:49",
+    "status": "completed",
+    "result": {
+      "success": true,
+      "message": "✅ 收到你的测试消息了！\n\n我是 WebViewer 助手 Dummy，可以帮你处理：\n\n🚗 **出行管理** (By Design) - 出差、旅行清单\n📦 **搬家打包** (Cherry Pick) - 记录物品原位置和新位置\n🏠 **物品管理** (Momhand) - 记录物品存放位置、找东西\n\n有什么需要帮忙的吗？直接告诉我就行！",
+      "refresh": "/siri-dream/"
+    },
+    "metadata": {
+      "source": "webchat",
+      "user": "jiukui",
+      "timestamp": "2026-03-03T11:05:48Z"
+    }
+  },
+  {
     "id": "2901e5d1-3dbf-4d09-b298-d9a3e8bd3302",
     "text": "我的大金链子在哪儿呢",
     "source": "api",

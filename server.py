@@ -37,8 +37,19 @@ ALLOWED_ORIGINS = [
     'https://43.153.153.62',
     'https://localhost',
     'https://127.0.0.1',
-    # 可以添加更多允许的域名
 ]
+
+# IP 白名单（留空表示允许所有 IP）
+IP_WHITELIST = [
+    # 示例：'223.104.40.171',
+]
+ENABLE_IP_WHITELIST = False  # 设为 True 启用 IP 白名单
+
+# API Token 认证（用于敏感操作）
+API_TOKENS = {
+    # 示例：'your-secret-token-here': 'admin',
+}
+ENABLE_TOKEN_AUTH = False  # 设为 True 启用 Token 认证
 
 # 速率限制配置（每个 IP 每分钟最大请求数）
 RATE_LIMIT_REQUESTS = 100
@@ -48,6 +59,7 @@ RATE_LIMIT_WINDOW = 60  # 秒
 SENSITIVE_PATHS = [
     '/api/settings',
     '/api/prompts/',
+    '/api/logs',
 ]
 
 # TLS 安全配置
@@ -148,6 +160,36 @@ def log_security_event(event_type: str, client_ip: str, path: str, details: str 
     记录安全事件
     """
     logger.warning(f"🔒 安全事件 [{event_type}] IP={client_ip} PATH={path} {details}")
+
+def check_ip_whitelist(client_ip: str) -> bool:
+    """
+    检查 IP 是否在白名单中
+    """
+    if not ENABLE_IP_WHITELIST:
+        return True  # 未启用则允许所有
+    
+    if not IP_WHITELIST:
+        return True  # 白名单为空则允许所有
+    
+    return client_ip in IP_WHITELIST
+
+def validate_token(auth_header: str) -> bool:
+    """
+    验证 API Token
+    """
+    if not ENABLE_TOKEN_AUTH:
+        return True  # 未启用则允许
+    
+    if not auth_header:
+        return False
+    
+    # 支持 Bearer Token 格式
+    if auth_header.startswith('Bearer '):
+        token = auth_header[7:]
+        return token in API_TOKENS
+    
+    # 直接 Token 格式
+    return auth_header in API_TOKENS
 
 def get_momhand_manager():
     """获取最新的物品管理器实例（SQLite 数据库版本）"""
@@ -347,7 +389,19 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
         """
         client_ip = self.client_address[0]
         
-        # 1. 速率限制检查
+        # 1. IP 白名单检查
+        if not check_ip_whitelist(client_ip):
+            log_security_event("IP_BLOCKED", client_ip, path, "IP 不在白名单")
+            self.send_response(403)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                "success": False,
+                "error": "IP 地址未授权"
+            }, ensure_ascii=False).encode("utf-8"))
+            return False
+        
+        # 2. 速率限制检查
         if not check_rate_limit(client_ip):
             log_security_event("RATE_LIMIT", client_ip, path, "请求过于频繁")
             self.send_response(429)
@@ -359,7 +413,21 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
             }, ensure_ascii=False).encode("utf-8"))
             return False
         
-        # 2. 来源验证（仅对敏感 API）
+        # 3. Token 认证检查（敏感 API）
+        if ENABLE_TOKEN_AUTH and path.startswith('/api/'):
+            auth_header = self.headers.get('Authorization', '')
+            if not validate_token(auth_header):
+                log_security_event("AUTH_FAILED", client_ip, path, "Token 验证失败")
+                self.send_response(401)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "success": False,
+                    "error": "未授权访问"
+                }, ensure_ascii=False).encode("utf-8"))
+                return False
+        
+        # 4. 来源验证（仅对敏感 API）
         for sensitive in SENSITIVE_PATHS:
             if path.startswith(sensitive):
                 origin = self.headers.get('Origin', '')
@@ -373,6 +441,10 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
                         "error": "来源未授权"
                     }, ensure_ascii=False).encode("utf-8"))
                     return False
+        
+        # 5. 记录所有请求（用于审计）
+        if path.startswith('/api/'):
+            logger.info(f"📝 API 访问 IP={client_ip} PATH={path}")
         
         return True
     
