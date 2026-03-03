@@ -47,9 +47,9 @@ ENABLE_IP_WHITELIST = False  # 设为 True 启用 IP 白名单
 
 # API Token 认证（用于敏感操作）
 API_TOKENS = {
-    # 示例：'your-secret-token-here': 'admin',
+    'c0d5c26dc1d8eceff90020d8c00f2d1d': 'admin',  # 主 Token
 }
-ENABLE_TOKEN_AUTH = False  # 设为 True 启用 Token 认证
+ENABLE_TOKEN_AUTH = True  # 已启用 Token 认证
 
 # 速率限制配置（每个 IP 每分钟最大请求数）
 RATE_LIMIT_REQUESTS = 100
