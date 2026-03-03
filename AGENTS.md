@@ -52,6 +52,58 @@ Capture what matters. Decisions, context, things to remember. Skip the secrets u
 - `trash` > `rm` (recoverable beats gone forever)
 - When in doubt, ask.
 
+## 🔧 openclaw.json 修改规范
+
+**核心要求**: 任何涉及 `openclaw.json` 的重要改动，**必须提前与用户确认**，不要自行修改。
+
+### 确认话术
+修改前必须询问：
+> "我需要修改 openclaw.json 的 XXX 部分，确认吗？"
+
+### 安全修改流程
+
+1. **备份**
+   ```bash
+   cp ~/.openclaw/openclaw.json ~/.openclaw/openclaw.json.backup.$(date +%Y%m%d_%H%M%S)
+   ```
+
+2. **修改**（优先使用 config 命令）
+   ```bash
+   openclaw config get <key>
+   openclaw config set <key> <value>
+   ```
+
+3. **验证**
+   ```bash
+   openclaw doctor --non-interactive
+   ```
+
+4. **测试**
+   ```bash
+   openclaw status
+   ```
+
+5. **回滚**（如有问题）
+   ```bash
+   cp ~/.openclaw/openclaw.json.backup.XXX ~/.openclaw/openclaw.json
+   ```
+
+### 权限分级
+
+**可自行修改**:
+- `skills/` 目录配置
+- `MEMORY.md` 等记忆文件
+- 脚本和工具配置
+
+**必须询问**:
+- Gateway 配置
+- 插件启用/禁用
+- 安全相关设置
+- 任何不确定的更改
+
+### ⚠️ 风险提示
+错误的配置可能导致 OpenClaw 无法启动。
+
 ## External vs Internal
 
 **Safe to do freely:**
