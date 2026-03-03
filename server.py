@@ -78,22 +78,38 @@ def get_bydesign_manager():
     from bydesign_manager import manager
     return manager
 
+# 全局设置文件
 SETTINGS_FILE = Path("/root/.openclaw/workspace/data/settings.json")
 SIRI_DREAM_SETTINGS_FILE = Path("/root/.openclaw/workspace/data/siri-dream/settings.json")
 
-def get_system_prompt():
-    """获取系统提示词（Siri Dream 模块）"""
+# 各模块独立设置文件
+MODULE_SETTINGS = {
+    'bydesign': Path("/root/.openclaw/workspace/www/bydesign/data/settings.json"),
+    'cherry_pick': Path("/root/.openclaw/workspace/www/cherry-pick/data/settings.json"),
+    'momhand': Path("/root/.openclaw/workspace/www/momhand/data/settings.json"),
+    'siri_dream': Path("/root/.openclaw/workspace/data/siri-dream/settings.json")
+}
+
+def get_module_prompt(module: str) -> str:
+    """获取指定模块的系统提示词"""
     try:
-        if SIRI_DREAM_SETTINGS_FILE.exists():
-            with open(SIRI_DREAM_SETTINGS_FILE, 'r', encoding='utf-8') as f:
+        settings_file = MODULE_SETTINGS.get(module, SIRI_DREAM_SETTINGS_FILE)
+        if settings_file.exists():
+            with open(settings_file, 'r', encoding='utf-8') as f:
                 settings = json.load(f)
-                return settings.get('system_prompt', '')
+                prompt = settings.get('system_prompt', '')
+                logger.info(f"📝 {module} 模块加载提示词：{prompt[:50]}...")
+                return prompt
     except Exception as e:
-        logger.info(f"⚠️  读取设置失败：{e}")
+        logger.info(f"⚠️  读取 {module} 模块设置失败：{e}")
     return ''
 
+def get_system_prompt():
+    """获取系统提示词（Siri Dream 模块 - 兼容旧接口）"""
+    return get_module_prompt('siri_dream')
+
 def save_system_prompt(prompt: str):
-    """保存系统提示词（Siri Dream 模块）"""
+    """保存系统提示词（Siri Dream 模块 - 兼容旧接口）"""
     try:
         SIRI_DREAM_SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
         settings = {'system_prompt': prompt}
@@ -103,6 +119,20 @@ def save_system_prompt(prompt: str):
         return True
     except Exception as e:
         logger.info(f"❌ 保存设置失败：{e}")
+        return False
+
+def save_module_prompt(module: str, prompt: str) -> bool:
+    """保存指定模块的系统提示词"""
+    try:
+        settings_file = MODULE_SETTINGS.get(module, SIRI_DREAM_SETTINGS_FILE)
+        settings_file.parent.mkdir(parents=True, exist_ok=True)
+        settings = {'system_prompt': prompt}
+        with open(settings_file, 'w', encoding='utf-8') as f:
+            json.dump(settings, f, ensure_ascii=False, indent=2)
+        logger.info(f"💾 {module} 模块提示词已保存到：{settings_file}")
+        return True
+    except Exception as e:
+        logger.info(f"❌ 保存 {module} 模块设置失败：{e}")
         return False
 
 def execute_project_save(project: str, result: dict):
@@ -197,6 +227,8 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
                 self.handle_get_prompt(path)
             elif path == "/api/settings":
                 self.handle_get_settings()
+            elif path.startswith("/api/module-settings/"):
+                self.handle_get_module_settings(path)
             elif path == "/api/message-result":
                 self.handle_message_result(query)
             elif path == "/api/logs":
@@ -1217,8 +1249,8 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
             # 更新状态为处理中
             manager['update_message_status'](message_id, 'processing')
             
-            # 获取 Siri Dream 模块的提示词
-            system_prompt = manager['get_system_prompt']()
+            # 获取 Siri Dream 模块的提示词（从独立配置文件）
+            system_prompt = get_module_prompt('siri_dream')
             
             # 构建完整的提示词（系统提示词 + 用户消息）
             # 支持两种格式：

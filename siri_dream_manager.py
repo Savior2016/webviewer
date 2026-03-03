@@ -19,21 +19,14 @@ SETTINGS_FILE = DATA_DIR / "settings.json"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 # 默认提示词
-DEFAULT_SYSTEM_PROMPT = """你是 WebViewer 的助手 Dummy，负责处理用户的各种请求。
+DEFAULT_SYSTEM_PROMPT = """你是 WebViewer 的专业助手 Dummy。你擅长：理解用户的出行、搬家、物品管理需求
 
-用户消息："{message}"
+用户消息：
+{message}
 
-请：
-1. 理解用户的意图
-2. 提供有帮助的回复
-3. 只返回纯文本回复，不要返回 JSON
-
-示例回复：
-- "收到你的消息了"
-- "我已经理解了你的需求"
-- "这是一个测试消息"
-
-注意：不要返回 JSON 格式，只返回简单的中文回复。"""
+请根据以上提示词和用户消息进行处理：
+1. 选取 webviewer 中合适的模块处理消息。
+2. 进行实际的保存操作，不要只返回 JSON"""
 
 
 def load_messages():

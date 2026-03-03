@@ -11,9 +11,9 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
-DATA_DIR = Path("/root/.openclaw/workspace/webviewer/data/cherry-pick")
+DATA_DIR = Path("/root/.openclaw/workspace/data/cherry-pick")
 DB_FILE = DATA_DIR / "moves.json"
-MOMHAND_FILE = Path("/root/.openclaw/workspace/momhand/data/items.json")
+MOMHAND_FILE = Path("/root/.openclaw/workspace/data/momhand.db")
 
 # 确保目录存在
 DATA_DIR.mkdir(parents=True, exist_ok=True)

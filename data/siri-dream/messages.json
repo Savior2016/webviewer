@@ -1,5 +1,340 @@
 [
   {
+    "id": "2901e5d1-3dbf-4d09-b298-d9a3e8bd3302",
+    "text": "我的大金链子在哪儿呢",
+    "source": "api",
+    "timestamp": 1772459670,
+    "created_at": "2026-03-02 21:54:30",
+    "status": "completed",
+    "result": {
+      "message": "根据你的记录，大金链子放在抽屉的第一层。需要我帮你查看其他物品的位置吗？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
+    "id": "8d161b8c-1799-444f-8692-819fbf4817d2",
+    "text": "帮我记一下我的大金链子放在抽屉的第一层",
+    "source": "api",
+    "timestamp": 1772459641,
+    "created_at": "2026-03-02 21:54:01",
+    "status": "completed",
+    "result": {
+      "message": "已记录：大金链子放在抽屉的第一层。需要我帮你查看其他物品的位置吗？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
+    "id": "4152aa38-8abc-40e3-bf1b-e889e4a54e91",
+    "text": "帮我记一下我的汉堡在柜台上",
+    "source": "api",
+    "timestamp": 1772453379,
+    "created_at": "2026-03-02 20:09:39",
+    "status": "completed",
+    "result": {
+      "message": "已记录：汉堡放在柜台上。需要我帮你查看其他物品的位置吗？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
+    "id": "b5d093d1-cadd-4603-a2cc-0aff8e2fe4bc",
+    "text": "帮我记一下我的大金链子在抽屉的第一层",
+    "source": "api",
+    "timestamp": 1772449220,
+    "created_at": "2026-03-02 19:00:20",
+    "status": "completed",
+    "result": {
+      "message": "已记录：大金链子放在抽屉的第一层。需要我帮你查看其他物品的位置吗？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
+    "id": "33bf9aa5-636d-43b8-91c0-d7027890c390",
+    "text": "记一下我的手机放在第一个抽屉里",
+    "source": "api",
+    "timestamp": 1772443381,
+    "created_at": "2026-03-02 17:23:01",
+    "status": "completed",
+    "result": {
+      "message": "已记录：手机放在第一个抽屉里。需要我帮你查看其他物品的位置吗？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
+    "id": "bcfa426d-b6c5-4028-9c55-e49018651480",
+    "text": "帮我记一下我的笔放在了书桌上",
+    "source": "api",
+    "timestamp": 1772435458,
+    "created_at": "2026-03-02 15:10:58",
+    "status": "completed",
+    "result": {
+      "message": "已记录：笔放在书桌上。需要我帮你查看其他物品的位置吗？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
+    "id": "44f5cd31-4b1a-4d1b-a02e-137b77d08961",
+    "text": "帮我记一下，我的身份证放在了主卧抽屉里",
+    "source": "api",
+    "timestamp": 1772435408,
+    "created_at": "2026-03-02 15:10:08",
+    "status": "completed",
+    "result": {
+      "message": "已记录：身份证放在主卧抽屉里。需要我帮你查看其他物品的位置吗？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
+    "id": "f1a09de6-a2bf-4541-9bbd-4a38a659fdd6",
+    "text": "记一下，猫砂放在了次卧箱子里",
+    "source": "api",
+    "timestamp": 1772435263,
+    "created_at": "2026-03-02 15:07:43",
+    "status": "completed",
+    "result": {
+      "message": "已记录：猫砂放在次卧箱子里。需要我帮你查看其他物品的位置吗？"
+    },
+    "metadata": {
+      "source": "web"
+    }
+  },
+  {
+    "id": "9fbad717-2597-4baf-b251-19e2c2ef7b58",
+    "text": "记一下我的键盘放在了电脑桌上",
+    "source": "api",
+    "timestamp": 1772433135,
+    "created_at": "2026-03-02 14:32:15",
+    "status": "completed",
+    "result": {
+      "message": "已记录：键盘放在电脑桌上。需要我帮你查看其他物品的位置吗？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
+    "id": "2a8f2bef-35da-492d-9daf-4a753dc4712c",
+    "text": "记下我的耳机放在了次卧的箱子里",
+    "source": "api",
+    "timestamp": 1772433050,
+    "created_at": "2026-03-02 14:30:50",
+    "status": "completed",
+    "result": {
+      "message": "已记录：耳机放在次卧的箱子里。需要我帮你查看其他物品的位置吗？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
+    "id": "0c22f0ca-6ebd-407d-b99b-bb3453433da4",
+    "text": "帮我",
+    "source": "api",
+    "timestamp": 1772433001,
+    "created_at": "2026-03-02 14:30:01",
+    "status": "completed",
+    "result": {
+      "message": "你好！我可以帮你：\n\n1. **记录物品位置** - 如\"帮我记一下钥匙放在抽屉里\"\n2. **搬家打包** - 如\"把书装进 3 号箱子\"\n3. **出行计划** - 如\"下周要去上海出差\"\n\n请告诉我具体要帮你做什么？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
+    "id": "c2b4b66d-344f-450f-8a14-b35f08602764",
+    "text": "你好啊",
+    "source": "api",
+    "timestamp": 1772432701,
+    "created_at": "2026-03-02 14:25:01",
+    "status": "completed",
+    "result": {
+      "message": "你好啊！我是 WebViewer 助手 Dummy，可以帮你处理出行、搬家和物品记录等请求。\n\n有什么需要帮忙的吗？比如记录物品位置、搬家打包或者出行计划？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
+    "id": "02356ccf-2974-430f-ba9a-28070d09dd42",
+    "text": "你好",
+    "source": "api",
+    "timestamp": 1772432561,
+    "created_at": "2026-03-02 14:22:41",
+    "status": "completed",
+    "result": {
+      "message": "你好！我是 WebViewer 助手 Dummy，可以帮你处理出行、搬家和物品记录等请求。\n\n有什么需要记录的吗？比如：\n- 物品位置（如\"帮我记一下钥匙放在抽屉里\"）\n- 搬家打包（如\"把书装进 3 号箱子\"）\n- 出行计划（如\"下周要去上海出差\"）\n\n直接告诉我就行！"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
+    "id": "b6075393-c5a1-43d6-93b6-040d385a1321",
+    "text": "帮我记一下水壶放在了次卧桌子上",
+    "source": "api",
+    "timestamp": 1772431221,
+    "created_at": "2026-03-02 14:00:21",
+    "status": "completed",
+    "result": {
+      "success": true,
+      "project": "momhand",
+      "action": "add_item",
+      "message": "已记录：水壶放在次卧桌子上",
+      "refresh": "/momhand/",
+      "data": {
+        "name": "水壶",
+        "type": "日常用品",
+        "location": "次卧桌子",
+        "usage": ""
+      }
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
+    "id": "3986bff8-462c-4282-af07-304384eadf0d",
+    "text": "帮我记一下我的水杯放在了卧室",
+    "source": "api",
+    "timestamp": 1772430310,
+    "created_at": "2026-03-02 13:45:10",
+    "status": "completed",
+    "result": {
+      "message": "已记录：水杯放在卧室。需要我帮你查看其他物品的位置吗？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
+    "id": "6ca4ae4a-d391-4a6e-9c75-a1ff5f813030",
+    "text": "你好",
+    "source": "api",
+    "timestamp": 1772429900,
+    "created_at": "2026-03-02 13:38:20",
+    "status": "completed",
+    "result": {
+      "message": "你好，我是 WebViewer 助手 Dummy，可以帮你处理出行、搬家和物品记录等请求。有什么需要帮忙的吗？"
+    },
+    "metadata": {
+      "source": "web"
+    }
+  },
+  {
+    "id": "afcc4b9c-3ab0-407d-8a6b-d8bb560998c4",
+    "text": "在妈妈的手项目中记录，我的耳机放在了书包里",
+    "source": "api",
+    "timestamp": 1772429728,
+    "created_at": "2026-03-02 13:35:28",
+    "status": "completed",
+    "result": {
+      "message": "已记录：耳机放在书包里。需要我帮你查看其他物品的位置吗？"
+    },
+    "metadata": {
+      "source": "web"
+    }
+  },
+  {
+    "id": "1e292aaa-71d5-421d-887d-2e4c25b671e6",
+    "text": "耳机放在了书包里",
+    "source": "api",
+    "timestamp": 1772429677,
+    "created_at": "2026-03-02 13:34:37",
+    "status": "completed",
+    "result": {
+      "message": "已记录：耳机放在书包里。需要我帮你查看其他物品的位置吗？"
+    },
+    "metadata": {
+      "source": "web"
+    }
+  },
+  {
+    "id": "20e1776a-1387-478f-9b69-e7e6539b7466",
+    "text": "帮我记下我的耳机放在了书包里",
+    "source": "api",
+    "timestamp": 1772429622,
+    "created_at": "2026-03-02 13:33:42",
+    "status": "completed",
+    "result": {
+      "message": "已记录：耳机放在书包里。需要我帮你查看其他物品的位置吗？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
+    "id": "3f1f9e21-8d11-42dd-958a-1e971114b8d4",
+    "text": "测试",
+    "source": "api",
+    "timestamp": 1772427828,
+    "created_at": "2026-03-02 13:03:48",
+    "status": "completed",
+    "result": {
+      "message": "收到你的测试消息了。我是 WebViewer 助手 Dummy，可以帮你处理出行、搬家和物品记录等请求。有什么需要帮忙的吗？"
+    },
+    "metadata": {
+      "source": "web"
+    }
+  },
+  {
+    "id": "bd06fad7-5086-4d82-b2af-be46e7b14415",
+    "text": "帮我记录一下我的证书放在了柜子里",
+    "source": "api",
+    "timestamp": 1772427644,
+    "created_at": "2026-03-02 13:00:44",
+    "status": "completed",
+    "result": {
+      "message": "已记录：证书放在柜子里。需要我帮你查看其他物品的位置吗？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
+    "id": "531620fa-2bbb-4e7e-a960-ac38d80447b3",
+    "text": "你好",
+    "source": "api",
+    "timestamp": 1772412185,
+    "created_at": "2026-03-02 08:43:05",
+    "status": "completed",
+    "result": {
+      "message": "你好，我是 WebViewer 助手 Dummy，可以帮你处理出行、搬家和物品记录等请求。有什么需要帮忙的吗？"
+    },
+    "metadata": {
+      "user": "jiukui",
+      "source": "apple"
+    }
+  },
+  {
     "id": "b3ad1f80-173a-4a8e-9af2-f04764ffa60e",
     "text": "记下我的键盘就在电脑桌上",
     "source": "api",

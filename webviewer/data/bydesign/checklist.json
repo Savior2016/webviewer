@@ -1,0 +1,29 @@
+{
+  "items": [
+    {
+      "id": "1",
+      "text": "关闭所有窗户",
+      "completed": false
+    },
+    {
+      "id": "2",
+      "text": "关闭所有电器电源",
+      "completed": false
+    },
+    {
+      "id": "3",
+      "text": "检查门锁",
+      "completed": false
+    },
+    {
+      "id": "4",
+      "text": "清空垃圾",
+      "completed": false
+    },
+    {
+      "id": "5",
+      "text": "检查水龙头",
+      "completed": false
+    }
+  ]
+}

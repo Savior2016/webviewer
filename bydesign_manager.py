@@ -9,7 +9,7 @@ import time
 import uuid
 from pathlib import Path
 
-DATA_DIR = Path("/root/.openclaw/workspace/webviewer/data/bydesign")
+DATA_DIR = Path("/root/.openclaw/workspace/data/bydesign")
 CHECKLIST_FILE = DATA_DIR / "checklist.json"  # 通用检查清单（每次都要做的）
 TRIPS_FILE = DATA_DIR / "trips.json"  # 出行记录（单次的）
 TEMPLATES_FILE = DATA_DIR / "templates.json"  # 检查清单模板

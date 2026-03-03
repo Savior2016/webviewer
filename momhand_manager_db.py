@@ -8,7 +8,7 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 
-DB_FILE = Path("/root/.openclaw/workspace/webviewer/data/momhand.db")
+DB_FILE = Path("/root/.openclaw/workspace/data/momhand.db")
 
 def get_db():
     """获取数据库连接"""

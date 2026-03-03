@@ -7,6 +7,7 @@
 - 2026-02-28: 添加超时保护，防止长消息导致服务崩溃
 - 超时从 60 秒缩短到 30 秒
 - 添加直接解析意图的后备方案
+- 2026-03-03: 系统提示词从各模块独立设置文件读取，动态拼接
 """
 
 import subprocess
@@ -16,53 +17,16 @@ import os
 from pathlib import Path
 import threading
 
-class TimeoutError(Exception):
-    pass
 
+# 各模块提示词配置文件路径
+MODULE_PROMPTS = {
+    'bydesign': Path("/root/.openclaw/workspace/www/bydesign/data/settings.json"),
+    'cherry_pick': Path("/root/.openclaw/workspace/www/cherry-pick/data/settings.json"),
+    'momhand': Path("/root/.openclaw/workspace/www/momhand/data/settings.json"),
+    'siri_dream': Path("/root/.openclaw/workspace/data/siri-dream/settings.json")
+}
 
-def run_with_timeout(func, args=(), kwargs=None, timeout=30):
-    """
-    带超时控制的函数执行
-    """
-    if kwargs is None:
-        kwargs = {}
-    
-    result = [None]
-    exception = [None]
-    
-    def target():
-        try:
-            result[0] = func(*args, **kwargs)
-        except Exception as e:
-            exception[0] = e
-    
-    thread = threading.Thread(target=target)
-    thread.daemon = True
-    thread.start()
-    thread.join(timeout)
-    
-    if thread.is_alive():
-        raise TimeoutError(f"函数执行超时（{timeout}秒）")
-    
-    if exception[0]:
-        raise exception[0]
-    
-    return result[0]
-
-
-def process_via_openclaw_agent(message: str) -> dict:
-    """
-    通过 OpenClaw Agent 处理消息
-    
-    Args:
-        message: 用户消息
-    
-    Returns:
-        处理结果字典
-    """
-    
-    # 构建系统提示词（要求不仅返回操作，还要执行记录）
-    system_prompt = """你是 WebViewer 的助手 Dummy，负责处理用户的出行、搬家和物品记录请求。
+DEFAULT_PROMPT = """你是 WebViewer 的助手 Dummy，负责处理用户的出行、搬家和物品记录请求。
 
 用户消息："{message}"
 
@@ -107,7 +71,106 @@ def process_via_openclaw_agent(message: str) -> dict:
   "data": {{保存的数据}} 或 null
 }}"""
 
-    full_prompt = system_prompt.format(message=message)
+
+def get_module_prompt(module: str) -> str:
+    """
+    获取指定模块的系统提示词
+    
+    Args:
+        module: 模块名 (bydesign, cherry_pick, momhand, siri_dream)
+    
+    Returns:
+        系统提示词字符串
+    """
+    try:
+        prompt_file = MODULE_PROMPTS.get(module)
+        if prompt_file and prompt_file.exists():
+            with open(prompt_file, 'r', encoding='utf-8') as f:
+                settings = json.load(f)
+                prompt = settings.get('system_prompt', '')
+                print(f"📝 加载 {module} 模块提示词：{prompt[:50]}...")
+                return prompt
+    except Exception as e:
+        print(f"⚠️  读取 {module} 模块提示词失败：{e}")
+    
+    # 返回默认提示词
+    return DEFAULT_PROMPT
+
+
+def build_full_prompt(module: str, message: str) -> str:
+    """
+    构建完整的提示词（模块提示词 + 用户消息）
+    
+    Args:
+        module: 模块名
+        message: 用户消息
+    
+    Returns:
+        完整的提示词
+    """
+    system_prompt = get_module_prompt(module)
+    
+    # 支持两种格式：
+    # 1. 如果提示词包含 {message} 占位符，使用 format 替换
+    # 2. 否则，将用户消息附加到提示词后面
+    if '{message}' in system_prompt:
+        return system_prompt.format(message=message)
+    else:
+        return f"""{system_prompt}
+
+用户消息：
+{message}
+
+请根据以上提示词和用户消息进行处理，返回有帮助的回复。"""
+
+class TimeoutError(Exception):
+    pass
+
+
+def run_with_timeout(func, args=(), kwargs=None, timeout=30):
+    """
+    带超时控制的函数执行
+    """
+    if kwargs is None:
+        kwargs = {}
+    
+    result = [None]
+    exception = [None]
+    
+    def target():
+        try:
+            result[0] = func(*args, **kwargs)
+        except Exception as e:
+            exception[0] = e
+    
+    thread = threading.Thread(target=target)
+    thread.daemon = True
+    thread.start()
+    thread.join(timeout)
+    
+    if thread.is_alive():
+        raise TimeoutError(f"函数执行超时（{timeout}秒）")
+    
+    if exception[0]:
+        raise exception[0]
+    
+    return result[0]
+
+
+def process_via_openclaw_agent(message: str, module: str = 'siri_dream') -> dict:
+    """
+    通过 OpenClaw Agent 处理消息
+    
+    Args:
+        message: 用户消息
+        module: 模块名，用于选择对应的系统提示词 (默认 siri_dream)
+    
+    Returns:
+        处理结果字典
+    """
+    
+    # 构建完整提示词（从模块设置文件读取 + 用户消息）
+    full_prompt = build_full_prompt(module, message)
     
     print(f"📤 发送消息到 OpenClaw Agent: {message[:50]}...")
     
