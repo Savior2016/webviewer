@@ -675,6 +675,9 @@
   window.showSettings = function() {
     const modal = document.getElementById('settingsModal');
     if (modal) {
+      // 先滚动到顶部，确保弹窗正确居中
+      window.scrollTo(0, 0);
+      document.body.style.overflow = 'hidden'; // 防止背景滚动
       modal.classList.remove('hidden');
       loadSavedPrompt();
     }
@@ -687,6 +690,7 @@
     const modal = document.getElementById('settingsModal');
     if (modal) {
       modal.classList.add('hidden');
+      document.body.style.overflow = ''; // 恢复背景滚动
     }
   };
 
