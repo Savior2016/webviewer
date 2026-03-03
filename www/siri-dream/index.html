@@ -158,12 +158,12 @@
   </div>
 
   <!-- 悬浮按钮 -->
-  <button onclick="togglePanel()" class="fab-button fixed bottom-24 right-24 z-[10000] transition-all bg-gradient-to-r from-blue-500 to-purple-500 text-white w-14 h-14 rounded-full shadow-2xl flex items-center justify-center text-2xl hover:shadow-blue-500/50">
+  <button onclick="togglePanel()" class="fab-button fixed bottom-24 right-24 z-[100] transition-all bg-gradient-to-r from-blue-500 to-purple-500 text-white w-14 h-14 rounded-full shadow-2xl flex items-center justify-center text-2xl hover:shadow-blue-500/50">
     <span id="fabIcon">💬</span>
   </button>
 
   <!-- 展开面板 -->
-  <div id="fabPanel" class="fab-panel fixed bottom-[110px] right-24 z-[99] hidden transition-all">
+  <div id="fabPanel" class="fab-panel fixed bottom-[110px] right-24 z-[1000] hidden transition-all">
     <div class="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl max-w-md w-full">
       <div class="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
         <div class="flex items-center gap-3">
@@ -188,7 +188,7 @@
   </div>
 
   <!-- 设置模态框 -->
-  <div id="settingsModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[99999] hidden flex items-center justify-center p-4">
+  <div id="settingsModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[10000] hidden flex items-center justify-center p-4">
     <div class="glass-card rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden modal">
       <div class="bg-gradient-to-r from-blue-500 to-purple-500 px-6 py-4 flex items-center justify-between">
         <h2 class="text-xl font-bold text-white">⚙️ 提示词设置</h2>
