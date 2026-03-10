@@ -2,6 +2,8 @@
 # WebViewer 服务监控脚本
 # 功能：监控服务状态，崩溃时自动重启并记录日志
 
+set -e  # 遇到错误立即退出（但会被 trap 捕获）
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PID_FILE="$SCRIPT_DIR/server.pid"
 LOG_FILE="$SCRIPT_DIR/server.log"
@@ -15,6 +17,9 @@ START_SCRIPT="$SCRIPT_DIR/../start-webviewer.sh"
 MAX_RESTARTS=5
 # 重启时间窗口（秒）
 RESTART_WINDOW=300
+
+# 错误处理
+trap 'log "❌ 监控程序异常退出，错误码：$?"' EXIT
 
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$MONITOR_LOG"
@@ -122,51 +127,58 @@ last_restart_time=0
 log "🔍 WebViewer 监控程序已启动"
 log "📁 工作目录：$SCRIPT_DIR"
 log "📊 监控间隔：30 秒"
+log "🛡️  错误保护：已启用"
 
+# 主监控循环（带错误保护）
 while true; do
-    monitor_count=$((monitor_count + 1))
-    
-    # 每 10 次检查输出一次状态（5 分钟）
-    if [ $((monitor_count % 10)) -eq 0 ]; then
-        uptime=$(get_uptime)
-        uptime_min=$((uptime / 60))
-        uptime_sec=$((uptime % 60))
-        log "💓 心跳检查 #${monitor_count} - 服务运行时间：${uptime_min}分${uptime_sec}秒"
-    fi
-    
-    if ! check_service; then
-        crash_time=$(date '+%Y-%m-%d %H:%M:%S')
-        uptime=$(get_uptime)
+    (
+        monitor_count=$((monitor_count + 1))
         
-        log "❌ 检测到服务崩溃！"
-        log_crash "服务崩溃 - $crash_time (运行 ${uptime}秒)"
+        # 每 10 次检查输出一次状态（5 分钟）
+        if [ $((monitor_count % 10)) -eq 0 ]; then
+            uptime=$(get_uptime)
+            uptime_min=$((uptime / 60))
+            uptime_sec=$((uptime % 60))
+            log "💓 心跳检查 #${monitor_count} - 服务运行时间：${uptime_min}分${uptime_sec}秒"
+        fi
         
-        # 收集崩溃信息
-        collect_crash_info "$crash_time" "$uptime"
-        
-        # 检查重启频率
-        current_time=$(date +%s)
-        if [ $((current_time - last_restart_time)) -lt $RESTART_WINDOW ]; then
-            restart_count=$((restart_count + 1))
-            if [ $restart_count -ge $MAX_RESTARTS ]; then
-                log "⚠️ 在 ${RESTART_WINDOW}秒内已重启${MAX_RESTARTS}次，停止自动重启"
-                log "🔔 请检查 $CRASH_LOG 文件分析崩溃原因"
-                exit 1
+        if ! check_service; then
+            crash_time=$(date '+%Y-%m-%d %H:%M:%S')
+            uptime=$(get_uptime)
+            
+            log "❌ 检测到服务崩溃！"
+            log_crash "服务崩溃 - $crash_time (运行 ${uptime}秒)"
+            
+            # 收集崩溃信息
+            collect_crash_info "$crash_time" "$uptime"
+            
+            # 检查重启频率
+            current_time=$(date +%s)
+            if [ $((current_time - last_restart_time)) -lt $RESTART_WINDOW ]; then
+                restart_count=$((restart_count + 1))
+                if [ $restart_count -ge $MAX_RESTARTS ]; then
+                    log "⚠️ 在 ${RESTART_WINDOW}秒内已重启${MAX_RESTARTS}次，停止自动重启"
+                    log "🔔 请检查 $CRASH_LOG 文件分析崩溃原因"
+                    exit 1
+                fi
+            else
+                restart_count=1
             fi
-        else
-            restart_count=1
+            last_restart_time=$current_time
+            
+            # 尝试重启
+            log "🔄 尝试重启服务 (第${restart_count}次)..."
+            if start_service; then
+                log "✅ 服务重启成功"
+            else
+                log "❌ 服务重启失败，等待 60 秒后重试..."
+                sleep 60
+            fi
         fi
-        last_restart_time=$current_time
-        
-        # 尝试重启
-        log "🔄 尝试重启服务 (第${restart_count}次)..."
-        if start_service; then
-            log "✅ 服务重启成功"
-        else
-            log "❌ 服务重启失败，等待 60 秒后重试..."
-            sleep 60
-        fi
-    fi
+    ) || {
+        log "⚠️ 监控循环出现错误，继续运行..."
+        sleep 5
+    }
     
     sleep 30
 done
