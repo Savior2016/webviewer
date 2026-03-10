@@ -590,8 +590,8 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
                 return
             self.show_pending_page()
             return
-        elif self.path.startswith('/www/'):
-            # 工具箱主页路径，直接提供静态文件
+        elif self.path.startswith('/www/') or self.path.startswith('/bydesign/') or self.path.startswith('/cherry-pick/') or self.path.startswith('/momhand/') or self.path.startswith('/siri-dream/') or self.path.startswith('/reports/') or self.path == '/transitions.css' or self.path.startswith('/js/'):
+            # 工具箱相关路径，直接提供静态文件
             if not self.check_admin_auth()[0]:
                 self.send_response(302)
                 self.send_header('Location', '/login')
@@ -599,13 +599,19 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
                 return
             # 直接读取文件并返回
             import os
-            rel_path = self.path[5:]  # 去掉 "/www"
+            rel_path = self.path
+            # 处理 /www/ 前缀
+            if rel_path.startswith('/www/'):
+                rel_path = rel_path[5:]
             if rel_path == '' or rel_path == '/':
                 rel_path = 'index.html'
             else:
                 rel_path = rel_path.lstrip('/')
             
             file_path = Config.WWW_DIR / rel_path
+            # 如果是目录，尝试加载 index.html
+            if file_path.exists() and file_path.is_dir():
+                file_path = file_path / 'index.html'
             try:
                 if file_path.exists() and file_path.is_file():
                     self.send_response(200)
