@@ -603,26 +603,39 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
             # 处理 /www/ 前缀
             if rel_path.startswith('/www/'):
                 rel_path = rel_path[5:]
-            if rel_path == '' or rel_path == '/':
-                rel_path = 'index.html'
-            else:
-                rel_path = rel_path.lstrip('/')
+            
+            # 确保 rel_path 不以 / 开头
+            rel_path = rel_path.lstrip('/')
+            
+            # 如果是空路径或目录，添加 index.html
+            if rel_path == '' or rel_path.endswith('/'):
+                rel_path = rel_path + 'index.html'
             
             file_path = Config.WWW_DIR / rel_path
-            # 如果是目录，尝试加载 index.html
-            if file_path.exists() and file_path.is_dir():
-                file_path = file_path / 'index.html'
             try:
                 if file_path.exists() and file_path.is_file():
                     self.send_response(200)
+                    # 根据文件扩展名设置正确的 Content-Type
                     if rel_path.endswith('.html'):
                         self.send_header('Content-Type', 'text/html; charset=utf-8')
                     elif rel_path.endswith('.css'):
                         self.send_header('Content-Type', 'text/css')
                     elif rel_path.endswith('.js'):
                         self.send_header('Content-Type', 'application/javascript')
+                    elif rel_path.endswith('.json'):
+                        self.send_header('Content-Type', 'application/json')
+                    elif rel_path.endswith('.png'):
+                        self.send_header('Content-Type', 'image/png')
+                    elif rel_path.endswith('.jpg') or rel_path.endswith('.jpeg'):
+                        self.send_header('Content-Type', 'image/jpeg')
+                    elif rel_path.endswith('.gif'):
+                        self.send_header('Content-Type', 'image/gif')
+                    elif rel_path.endswith('.svg'):
+                        self.send_header('Content-Type', 'image/svg+xml')
+                    elif rel_path.endswith('.ico'):
+                        self.send_header('Content-Type', 'image/x-icon')
                     else:
-                        self.send_header('Content-Type', 'application/octet-stream')
+                        self.send_header('Content-Type', 'text/plain')
                     self.end_headers()
                     with open(file_path, 'rb') as f:
                         self.wfile.write(f.read())
