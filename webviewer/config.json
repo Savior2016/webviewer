@@ -1,0 +1,13 @@
+{
+  "admin": {
+    "username": "yangjiukui",
+    "password_hash": "393a58a897f871b6c803f5b283ec31edcce18d97979a6e6df406438d5391bbc9"
+  },
+  "api_token": "wv_tok_3feb60dd2164cd04bdc1f644449919c3",
+  "whitelist_ips": [
+    "43.153.153.62",
+    "221.219.243.106",
+    "223.104.41.9"
+  ],
+  "session_timeout_hours": 24
+}
