@@ -302,7 +302,7 @@ class DataManager:
             return True
         return False
     
-    def get_audit_logs(self, limit=100, offset=0, filter_ip=None, filter_path=None):
+    def get_audit_logs(self, limit=100, offset=0, filter_ip=None, filter_path=None, filter_browser=None, filter_platform=None, filter_device=None, filter_event=None, filter_status=None):
         """获取审计日志"""
         logs = []
         try:
@@ -315,6 +315,16 @@ class DataManager:
                             if filter_ip and log.get('ip') != filter_ip:
                                 continue
                             if filter_path and filter_path not in log.get('path', ''):
+                                continue
+                            if filter_browser and log.get('browser') != filter_browser:
+                                continue
+                            if filter_platform and log.get('platform') != filter_platform:
+                                continue
+                            if filter_device and log.get('device_type') != filter_device:
+                                continue
+                            if filter_event and log.get('event_type') != filter_event:
+                                continue
+                            if filter_status and log.get('status') != filter_status:
                                 continue
                             logs.append(log)
                         except:
@@ -336,6 +346,8 @@ class DataManager:
         """获取统计信息"""
         total_visits = 0
         unique_ips = set()
+        unique_browsers = set()
+        unique_platforms = set()
         today_visits = 0
         today = datetime.now().date()
         
@@ -347,6 +359,8 @@ class DataManager:
                             log = json.loads(line.strip())
                             total_visits += 1
                             unique_ips.add(log.get('ip', ''))
+                            unique_browsers.add(log.get('browser', 'Unknown'))
+                            unique_platforms.add(log.get('platform', 'Unknown'))
                             log_date = datetime.fromtimestamp(log.get('timestamp', 0)).date()
                             if log_date == today:
                                 today_visits += 1
@@ -451,6 +465,13 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
         
         user_agent = self.headers.get('User-Agent', 'Unknown')
         browser, platform = self._parse_user_agent(user_agent)
+        device_type = self._detect_device_type(user_agent)
+        screen_res = self.headers.get('X-Screen-Resolution', '')
+        timezone = self.headers.get('X-Timezone', '')
+        
+        # 解析 Accept-Language 获取首选语言
+        accept_lang = self.headers.get('Accept-Language', '')
+        primary_lang = accept_lang.split(',')[0].strip() if accept_lang else ''
         
         info = {
             'ip': ip,
@@ -458,9 +479,12 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
             'path': self.path,
             'method': self.command,
             'referer': self.headers.get('Referer', ''),
-            'language': self.headers.get('Accept-Language', ''),
+            'language': primary_lang,
             'platform': platform,
             'browser': browser,
+            'device_type': device_type,
+            'screen_resolution': screen_res,
+            'timezone': timezone,
             'location': self._get_location(ip),
             'timestamp': time.time(),
             'datetime': datetime.now().isoformat()
@@ -489,20 +513,52 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
             browser = 'Edge'
         elif 'msie' in ua_lower or 'trident' in ua_lower:
             browser = 'IE'
+        elif 'curl' in ua_lower:
+            browser = 'curl'
+        elif 'python' in ua_lower:
+            browser = 'Python'
         
         # 平台
         if 'windows' in ua_lower:
-            platform = 'Windows'
+            if 'windows nt 10.0' in ua_lower:
+                platform = 'Windows 10/11'
+            elif 'windows nt 6.3' in ua_lower:
+                platform = 'Windows 8.1'
+            elif 'windows nt 6.2' in ua_lower:
+                platform = 'Windows 8'
+            elif 'windows nt 6.1' in ua_lower:
+                platform = 'Windows 7'
+            else:
+                platform = 'Windows'
         elif 'mac os' in ua_lower or 'macintosh' in ua_lower:
             platform = 'macOS'
         elif 'linux' in ua_lower:
             platform = 'Linux'
         elif 'android' in ua_lower:
             platform = 'Android'
-        elif 'iphone' in ua_lower or 'ipad' in ua_lower:
-            platform = 'iOS'
+        elif 'iphone' in ua_lower:
+            platform = 'iOS (iPhone)'
+        elif 'ipad' in ua_lower:
+            platform = 'iOS (iPad)'
         
         return browser, platform
+    
+    def _detect_device_type(self, ua):
+        """检测设备类型"""
+        ua_lower = ua.lower()
+        
+        if 'mobile' in ua_lower or 'android' in ua_lower and 'mobile' in ua_lower:
+            return 'Mobile'
+        elif 'iphone' in ua_lower:
+            return 'iPhone'
+        elif 'ipad' in ua_lower or 'tablet' in ua_lower:
+            return 'Tablet'
+        elif 'tv' in ua_lower or 'smart-tv' in ua_lower:
+            return 'SmartTV'
+        elif 'bot' in ua_lower or 'spider' in ua_lower or 'crawler' in ua_lower:
+            return 'Bot/Crawler'
+        else:
+            return 'Desktop'
     
     def _get_location(self, ip):
         """根据 IP 获取地理位置"""
@@ -746,10 +802,17 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
             
             limit = int(params.get('limit', [100])[0])
             offset = int(params.get('offset', [0])[0])
-            filter_ip = params.get('ip', [None])[0]
-            filter_path = params.get('path', [None])[0]
             
-            logs = data_manager.get_audit_logs(limit, offset, filter_ip, filter_path)
+            logs = data_manager.get_audit_logs(
+                limit, offset,
+                filter_ip=params.get('ip', [None])[0],
+                filter_path=params.get('path', [None])[0],
+                filter_browser=params.get('browser', [None])[0],
+                filter_platform=params.get('platform', [None])[0],
+                filter_device=params.get('device', [None])[0],
+                filter_event=params.get('event', [None])[0],
+                filter_status=params.get('status', [None])[0]
+            )
             stats = data_manager.get_stats()
             
             self.send_json({
@@ -1026,26 +1089,36 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
         .header { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; }
         .header h1 { font-size: 24px; }
         .header a { color: white; text-decoration: none; padding: 8px 16px; background: rgba(255,255,255,0.2); border-radius: 8px; }
-        .container { max-width: 1400px; margin: 0 auto; padding: 40px 20px; }
-        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .container { max-width: 1600px; margin: 0 auto; padding: 40px 20px; }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; margin-bottom: 30px; }
         .stat-card { background: white; padding: 24px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
         .stat-value { font-size: 32px; font-weight: bold; color: #667eea; }
-        .stat-label { color: #6b7280; margin-top: 8px; }
-        .filters { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; display: flex; gap: 16px; flex-wrap: wrap; }
-        .filters input { padding: 10px 16px; border: 2px solid #e5e7eb; border-radius: 8px; flex: 1; min-width: 200px; }
-        .filters button { padding: 10px 24px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; }
-        .log-table { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        .log-table table { width: 100%; border-collapse: collapse; }
-        .log-table th, .log-table td { padding: 16px; text-align: left; border-bottom: 1px solid #e5e7eb; }
-        .log-table th { background: #f9fafb; font-weight: 600; color: #374151; }
+        .stat-label { color: #6b7280; margin-top: 8px; font-size: 14px; }
+        .filters { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+        .filters input, .filters select { padding: 10px 14px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; }
+        .filters input { flex: 1; min-width: 150px; }
+        .filters select { min-width: 140px; background: white; }
+        .filters button { padding: 10px 24px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; }
+        .filters button:hover { background: #5a67d8; }
+        .log-table { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow-x: auto; }
+        .log-table table { width: 100%; border-collapse: collapse; min-width: 1200px; }
+        .log-table th, .log-table td { padding: 14px 16px; text-align: left; border-bottom: 1px solid #e5e7eb; font-size: 14px; }
+        .log-table th { background: #f9fafb; font-weight: 600; color: #374151; white-space: nowrap; }
         .log-table tr:hover { background: #f9fafb; }
-        .status-allowed { color: #10b981; }
-        .status-blocked { color: #ef4444; }
-        .status-success { color: #10b981; }
-        .status-failed { color: #ef4444; }
+        .status-allowed { color: #10b981; font-weight: 500; }
+        .status-blocked { color: #ef4444; font-weight: 500; }
+        .status-success { color: #10b981; font-weight: 500; }
+        .status-failed { color: #ef4444; font-weight: 500; }
         .refresh-btn { padding: 8px 16px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer; }
         .load-more { text-align: center; padding: 20px; }
-        .load-more button { padding: 12px 32px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; }
+        .load-more button { padding: 12px 32px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 15px; }
+        .device-info { font-size: 12px; color: #6b7280; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; }
+        .badge-desktop { background: #dbeafe; color: #1e40af; }
+        .badge-mobile { background: #fef3c7; color: #92400e; }
+        .badge-iphone { background: #fce7f3; color: #9d174d; }
+        .badge-tablet { background: #e0e7ff; color: #3730a3; }
+        .badge-bot { background: #fee2e2; color: #991b1b; }
     </style>
 </head>
 <body>
@@ -1053,14 +1126,56 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
         <h1>📊 访问审计日志</h1>
         <div>
             <a href="/pending">待审批</a>
+            <a href="/audit" style="margin-left: 10px;">🔄 审计</a>
             <a href="/logout" style="margin-left: 10px;">退出登录</a>
         </div>
     </div>
     <div class="container">
         <div class="stats" id="stats"></div>
         <div class="filters">
-            <input type="text" id="filterIp" placeholder="过滤 IP 地址">
-            <input type="text" id="filterPath" placeholder="过滤路径">
+            <input type="text" id="filterIp" placeholder="🔍 IP 地址">
+            <select id="filterBrowser">
+                <option value="">所有浏览器</option>
+                <option value="Chrome">Chrome</option>
+                <option value="Safari">Safari</option>
+                <option value="Firefox">Firefox</option>
+                <option value="Edge">Edge</option>
+                <option value="curl">curl</option>
+                <option value="Python">Python</option>
+                <option value="Unknown">Unknown</option>
+            </select>
+            <select id="filterPlatform">
+                <option value="">所有平台</option>
+                <option value="Windows 10/11">Windows 10/11</option>
+                <option value="Windows 7">Windows 7</option>
+                <option value="macOS">macOS</option>
+                <option value="Linux">Linux</option>
+                <option value="iOS (iPhone)">iOS (iPhone)</option>
+                <option value="iOS (iPad)">iOS (iPad)</option>
+                <option value="Android">Android</option>
+                <option value="Unknown">Unknown</option>
+            </select>
+            <select id="filterDevice">
+                <option value="">所有设备</option>
+                <option value="Desktop">Desktop</option>
+                <option value="Mobile">Mobile</option>
+                <option value="iPhone">iPhone</option>
+                <option value="Tablet">Tablet</option>
+                <option value="Bot/Crawler">Bot/Crawler</option>
+            </select>
+            <select id="filterEvent">
+                <option value="">所有事件</option>
+                <option value="page_access">页面访问</option>
+                <option value="login_attempt">登录尝试</option>
+                <option value="approval">审批操作</option>
+            </select>
+            <select id="filterStatus">
+                <option value="">所有状态</option>
+                <option value="allowed">允许</option>
+                <option value="blocked">阻止</option>
+                <option value="success">成功</option>
+                <option value="failed">失败</option>
+            </select>
             <button onclick="loadLogs()">🔍 搜索</button>
             <button class="refresh-btn" onclick="loadLogs()">🔄 刷新</button>
         </div>
@@ -1070,11 +1185,12 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
                     <tr>
                         <th>时间</th>
                         <th>IP 地址</th>
-                        <th>设备</th>
+                        <th>设备信息</th>
                         <th>路径</th>
                         <th>事件类型</th>
                         <th>状态</th>
                         <th>位置</th>
+                        <th>语言</th>
                     </tr>
                 </thead>
                 <tbody id="logTable"></tbody>
@@ -1088,15 +1204,35 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
         let offset = 0;
         const limit = 50;
         
+        function getDeviceBadge(deviceType) {
+            const badges = {
+                'Desktop': 'badge-desktop',
+                'Mobile': 'badge-mobile',
+                'iPhone': 'badge-iphone',
+                'Tablet': 'badge-tablet',
+                'Bot/Crawler': 'badge-bot'
+            };
+            const badgeClass = badges[deviceType] || '';
+            return badgeClass ? `<span class="badge ${badgeClass}">${deviceType}</span>` : deviceType;
+        }
+        
         async function loadLogs(append = false) {
             if (!append) offset = 0;
             
             const ip = document.getElementById('filterIp').value;
-            const path = document.getElementById('filterPath').value;
+            const browser = document.getElementById('filterBrowser').value;
+            const platform = document.getElementById('filterPlatform').value;
+            const device = document.getElementById('filterDevice').value;
+            const event = document.getElementById('filterEvent').value;
+            const status = document.getElementById('filterStatus').value;
             
             let url = `/api/audit-logs?limit=${limit}&offset=${offset}`;
             if (ip) url += `&ip=${encodeURIComponent(ip)}`;
-            if (path) url += `&path=${encodeURIComponent(path)}`;
+            if (browser) url += `&browser=${encodeURIComponent(browser)}`;
+            if (platform) url += `&platform=${encodeURIComponent(platform)}`;
+            if (device) url += `&device=${encodeURIComponent(device)}`;
+            if (event) url += `&event=${encodeURIComponent(event)}`;
+            if (status) url += `&status=${encodeURIComponent(status)}`;
             
             try {
                 const res = await fetch(url);
@@ -1108,6 +1244,8 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
                         <div class="stat-card"><div class="stat-value">${data.stats.total_visits}</div><div class="stat-label">总访问数</div></div>
                         <div class="stat-card"><div class="stat-value">${data.stats.unique_ips}</div><div class="stat-label">独立 IP</div></div>
                         <div class="stat-card"><div class="stat-value">${data.stats.today_visits}</div><div class="stat-label">今日访问</div></div>
+                        <div class="stat-card"><div class="stat-value">${data.stats.unique_browsers || 0}</div><div class="stat-label">浏览器类型</div></div>
+                        <div class="stat-card"><div class="stat-value">${data.stats.unique_platforms || 0}</div><div class="stat-label">平台类型</div></div>
                         <div class="stat-card"><div class="stat-value">${data.stats.pending_approvals}</div><div class="stat-label">待审批</div></div>
                     `;
                 }
@@ -1117,14 +1255,20 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
                     const row = tbody.insertRow();
                     const time = new Date(log.timestamp * 1000).toLocaleString('zh-CN');
                     const statusClass = ['allowed', 'success'].includes(log.status) ? 'status-allowed' : 'status-blocked';
+                    const deviceBadge = getDeviceBadge(log.device_type || 'Desktop');
                     row.innerHTML = `
-                        <td>${time}</td>
-                        <td>${log.ip}</td>
-                        <td>${log.browser || 'Unknown'}<br><small style="color:#999">${log.platform || ''}</small></td>
-                        <td>${log.path}</td>
-                        <td>${log.event_type}</td>
-                        <td class="${statusClass}">${log.status}</td>
-                        <td>${log.location || '未知'}</td>
+                        <td style="white-space:nowrap;">${time}</td>
+                        <td style="white-space:nowrap;">${log.ip}</td>
+                        <td>
+                            <div style="font-weight:500;">${log.browser || 'Unknown'}</div>
+                            <div class="device-info">${log.platform || ''}</div>
+                            <div style="margin-top:4px;">${deviceBadge}</div>
+                        </td>
+                        <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;">${log.path}</td>
+                        <td style="white-space:nowrap;">${log.event_type}</td>
+                        <td class="${statusClass}" style="white-space:nowrap;">${log.status}</td>
+                        <td style="white-space:nowrap;">${log.location || '未知'}</td>
+                        <td style="white-space:nowrap;">${log.language || '-'}</td>
                     `;
                 });
                 
