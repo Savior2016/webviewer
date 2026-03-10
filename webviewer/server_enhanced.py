@@ -646,15 +646,21 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
         
         # 特殊路径处理
         if self.path == '/' or self.path == '':
-            # 检查是否是管理员登录状态
+            # 检查是否有管理员会话
             if self.check_admin_auth()[0]:
                 self.send_response(302)
                 self.send_header('Location', '/www/')
                 self.end_headers()
-            else:
+                return
+            # 检查是否有访客会话
+            allowed, session_id, visitor_info = self.check_access()
+            if allowed and session_id:
                 self.send_response(302)
-                self.send_header('Location', '/login')
+                self.send_header('Location', '/www/')
                 self.end_headers()
+                return
+            # 显示登录/访客选择页面
+            self.show_login_page()
             return
         elif self.path == '/login':
             self.show_login_page()
@@ -686,13 +692,18 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
             self.show_pending_page()
             return
         elif self.path.startswith('/www/') or self.path.startswith('/bydesign/') or self.path.startswith('/cherry-pick/') or self.path.startswith('/momhand/') or self.path.startswith('/siri-dream/') or self.path.startswith('/reports/') or self.path == '/transitions.css' or self.path.startswith('/js/'):
-            # 工具箱相关路径，直接提供静态文件
-            if not self.check_admin_auth()[0]:
-                self.send_response(302)
-                self.send_header('Location', '/login')
-                self.end_headers()
+            # 工具箱相关路径，使用审批会话检查（一次审批，24 小时有效）
+            allowed, session_id, visitor_info = self.check_access()
+            
+            if not allowed:
+                # 未授权，创建待审批并显示等待页面
+                approval_record = data_manager.create_pending_approval(visitor_info)
+                approval_id = approval_record['approval_id']
+                FeishuNotifier.send_approval_request(visitor_info, approval_id)
+                self.show_waiting_page(approval_id)
                 return
-            # 直接读取文件并返回
+            
+            # 已授权，提供静态文件
             import os
             rel_path = self.path
             # 处理 /www/ 前缀
@@ -903,23 +914,34 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
         
         self.send_response(200)
         self.send_header('Content-Type', 'text/html; charset=utf-8')
+        
+        # 审批通过时设置会话 Cookie（24 小时有效）
+        if approve and success and isinstance(result, str):
+            session_id = result
+            self.send_header('Set-Cookie', f'wv_session={session_id}; Path=/; Max-Age={Config.SESSION_TIMEOUT_HOURS*3600}; HttpOnly')
+        
         self.end_headers()
-        self.wfile.write(f'''
-<!DOCTYPE html>
+        
+        # 生成审批结果页面
+        icon = "✅" if approve else "❌"
+        redirect_script = "<script>setTimeout(() => { window.location.href = '/www/'; }, 3000);</script>" if (approve and success) else ""
+        
+        html = f"""<!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8"><title>审批结果</title></head>
 <body style="display:flex;justify-content:center;align-items:center;height:100vh;background:linear-gradient(135deg,#667eea,#764ba2);font-family:sans-serif;">
 <div style="background:white;padding:40px;border-radius:16px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,0.2);">
-<h1 style="font-size:48px;margin:0;">{"✅" if approve else "❌"}</h1>
+<h1 style="font-size:48px;margin:0;">{icon}</h1>
 <h2>{msg}</h2>
 <p style="color:#666;">{result if isinstance(result, str) else ''}</p>
+{redirect_script}
 </div>
 </body>
-</html>
-'''.encode())
+</html>"""
+        self.wfile.write(html.encode())
     
     def show_login_page(self):
-        """显示登录页面"""
+        """显示登录页面（支持管理员登录和访客请求访问）"""
         self.send_response(200)
         self.send_header('Content-Type', 'text/html; charset=utf-8')
         self.end_headers()
@@ -930,71 +952,175 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>管理员登录 | WebViewer</title>
+    <title>WebViewer - 访问入口</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #24243e 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 20px;
+            position: relative;
+            overflow: hidden;
         }
-        .login-box {
-            background: white;
-            padding: 40px;
-            border-radius: 16px;
-            box-shadow: 0 25px 50px rgba(0,0,0,0.2);
+        body::before {
+            content: '';
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+            top: -100px;
+            left: -100px;
+            animation: float 6s ease-in-out infinite;
+        }
+        body::after {
+            content: '';
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+            bottom: -50px;
+            right: -50px;
+            animation: float 8s ease-in-out infinite reverse;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(10deg); }
+        }
+        .container {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            max-width: 900px;
             width: 100%;
-            max-width: 400px;
         }
-        h1 { color: #1f2937; margin-bottom: 30px; text-align: center; }
-        .form-group { margin-bottom: 20px; }
-        label { display: block; margin-bottom: 8px; color: #374151; font-weight: 500; }
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 40px;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.2);
+            text-align: center;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 35px 70px rgba(0,0,0,0.3);
+        }
+        .card-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+        h2 { color: #1f2937; margin-bottom: 15px; font-size: 24px; }
+        .desc { color: #6b7280; margin-bottom: 30px; font-size: 14px; line-height: 1.6; }
+        .form-group { margin-bottom: 20px; text-align: left; }
+        label { display: block; margin-bottom: 8px; color: #374151; font-weight: 500; font-size: 14px; }
         input {
             width: 100%;
             padding: 12px 16px;
             border: 2px solid #e5e7eb;
-            border-radius: 8px;
-            font-size: 16px;
-            transition: border-color 0.2s;
+            border-radius: 12px;
+            font-size: 15px;
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
-        input:focus { outline: none; border-color: #667eea; }
-        button {
+        input:focus { 
+            outline: none; 
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        .btn {
             width: 100%;
             padding: 14px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
             border: none;
-            border-radius: 8px;
+            border-radius: 12px;
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
-            transition: transform 0.2s;
+            transition: all 0.2s;
         }
-        button:hover { transform: translateY(-2px); }
-        .error { color: #ef4444; margin-bottom: 20px; text-align: center; display: none; }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        .btn-primary:hover { 
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        .btn-secondary {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.4);
+        }
+        .error { color: #ef4444; margin-bottom: 20px; font-size: 14px; display: none; }
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 30px 0;
+        }
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #e5e7eb;
+        }
+        .divider span {
+            padding: 0 15px;
+            color: #9ca3af;
+            font-size: 13px;
+        }
+        @media (max-width: 768px) {
+            .container { grid-template-columns: 1fr; }
+            .card { padding: 30px 20px; }
+        }
     </style>
 </head>
 <body>
-    <div class="login-box">
-        <h1>🔐 管理员登录</h1>
-        <div class="error" id="error"></div>
-        <form id="loginForm">
-            <div class="form-group">
-                <label>用户名</label>
-                <input type="text" id="username" required placeholder="请输入用户名">
+    <div class="container">
+        <!-- 管理员登录卡片 -->
+        <div class="card">
+            <div class="card-icon">🔐</div>
+            <h2>管理员登录</h2>
+            <p class="desc">使用管理员账号登录，访问所有功能和审计日志</p>
+            <div class="error" id="loginError"></div>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label>用户名</label>
+                    <input type="text" id="username" required placeholder="请输入用户名">
+                </div>
+                <div class="form-group">
+                    <label>密码</label>
+                    <input type="password" id="password" required placeholder="请输入密码">
+                </div>
+                <button type="submit" class="btn btn-primary">立即登录</button>
+            </form>
+        </div>
+        
+        <!-- 访客访问卡片 -->
+        <div class="card">
+            <div class="card-icon">🚀</div>
+            <h2>访客访问</h2>
+            <p class="desc">申请临时访问权限，管理员审批后即可使用工具箱</p>
+            <div class="error" id="guestError"></div>
+            <button onclick="requestAccess()" class="btn btn-secondary">申请访问</button>
+            <div class="divider">
+                <span>审批后 24 小时内有效</span>
             </div>
-            <div class="form-group">
-                <label>密码</label>
-                <input type="password" id="password" required placeholder="请输入密码">
-            </div>
-            <button type="submit">登录</button>
-        </form>
+            <p style="font-size:13px;color:#9ca3af;">✨ 一次审批，24 小时内可自由访问所有工具</p>
+        </div>
     </div>
+    
     <script>
+        // 管理员登录
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const username = document.getElementById('username').value;
@@ -1011,14 +1137,32 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
                 if (data.success) {
                     window.location.href = data.redirect;
                 } else {
-                    document.getElementById('error').textContent = data.error || '登录失败';
-                    document.getElementById('error').style.display = 'block';
+                    document.getElementById('loginError').textContent = data.error || '登录失败';
+                    document.getElementById('loginError').style.display = 'block';
                 }
             } catch (err) {
-                document.getElementById('error').textContent = '网络错误，请重试';
-                document.getElementById('error').style.display = 'block';
+                document.getElementById('loginError').textContent = '网络错误，请重试';
+                document.getElementById('loginError').style.display = 'block';
             }
         });
+        
+        // 访客请求访问
+        async function requestAccess() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = '请求中...';
+            
+            try {
+                const res = await fetch('/');
+                // 会触发审批流程，跳转到等待页面
+                window.location.href = '/';
+            } catch (err) {
+                document.getElementById('guestError').textContent = '请求失败，请重试';
+                document.getElementById('guestError').style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = '申请访问';
+            }
+        }
     </script>
 </body>
 </html>
@@ -1536,32 +1680,57 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
 # ==================== 启动服务器 ====================
 
 def run_server():
-    """启动 HTTPS 服务器"""
-    server_address = (Config.HOST, Config.HTTPS_PORT)
-    httpd = HTTPServer(server_address, WebViewerHandler)
+    """启动 HTTPS 服务器（带异常处理和自动重启）"""
+    import logging
     
-    # 加载 SSL 证书
-    cert_file = Config.DATA_DIR / 'server.crt'
-    key_file = Config.DATA_DIR / 'server.key'
+    # 配置日志
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler(Config.DATA_DIR / 'server.log', encoding='utf-8'),
+            logging.StreamHandler()
+        ]
+    )
+    logger = logging.getLogger(__name__)
     
-    if cert_file.exists() and key_file.exists():
-        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        context.load_cert_chain(certfile=str(cert_file), keyfile=str(key_file))
-        httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
-        print(f"🔒 SSL 已启用")
-    else:
-        print(f"⚠️ 警告：SSL 证书未找到，将以 HTTP 运行")
+    while True:  # 自动重启循环
+        try:
+            server_address = (Config.HOST, Config.HTTPS_PORT)
+            httpd = HTTPServer(server_address, WebViewerHandler)
+            
+            # 加载 SSL 证书
+            cert_file = Config.DATA_DIR / 'server.crt'
+            key_file = Config.DATA_DIR / 'server.key'
+            
+            if cert_file.exists() and key_file.exists():
+                context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+                context.load_cert_chain(certfile=str(cert_file), keyfile=str(key_file))
+                httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
+                logger.info("🔒 SSL 已启用")
+            else:
+                logger.warning("⚠️ 警告：SSL 证书未找到，将以 HTTP 运行")
+            
+            logger.info("=" * 60)
+            logger.info("🚀 WebViewer 增强版服务器已启动")
+            logger.info("=" * 60)
+            logger.info(f"📡 监听地址：https://{socket.gethostbyname(socket.gethostname())}:{Config.HTTPS_PORT}")
+            logger.info(f"🔐 管理员登录：https://.../login")
+            logger.info(f"📊 审计日志：https://.../audit")
+            logger.info(f"📋 待审批：https://.../pending")
+            logger.info("=" * 60)
+            
+            httpd.serve_forever()
+            
+        except KeyboardInterrupt:
+            logger.info("👋 收到中断信号，正在关闭...")
+            break
+        except Exception as e:
+            logger.error(f"❌ 服务器异常：{e}", exc_info=True)
+            logger.info("🔄 5 秒后自动重启...")
+            time.sleep(5)
     
-    print("=" * 60)
-    print("🚀 WebViewer 增强版服务器已启动")
-    print("=" * 60)
-    print(f"📡 监听地址：https://{socket.gethostbyname(socket.gethostname())}:{Config.HTTPS_PORT}")
-    print(f"🔐 管理员登录：https://.../login")
-    print(f"📊 审计日志：https://.../audit")
-    print(f"📋 待审批：https://.../pending")
-    print("=" * 60)
-    
-    httpd.serve_forever()
+    logger.info("🛑 服务器已关闭")
 
 if __name__ == '__main__':
     run_server()
