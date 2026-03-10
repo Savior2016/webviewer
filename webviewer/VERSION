@@ -1,8 +1,16 @@
 # WebViewer Version
 
-**Current Version:** v1.5.5
+**Current Version:** v1.5.6
 
 ## Release History
+
+### v1.5.6 (2026-03-10)
+- 审计页面响应式布局优化，支持移动端自适应
+- 统计卡片可点击筛选（总访问数、独立 IP、今日访问等）
+- 移除顶部冗余的"审计"按钮
+- 添加 IP 属地分析功能（基于 IP 段识别国家/地区）
+- 优化表格布局，支持横向滚动
+- 改进筛选器交互体验
 
 ### v1.5.5 (2026-03-10)
 - 增强访问者设备信息记录（device_type, screen_resolution, timezone, language）
