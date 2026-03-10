@@ -1,8 +1,18 @@
 # WebViewer Version
 
-**Current Version:** v1.5.4
+**Current Version:** v1.5.5
 
 ## Release History
+
+### v1.5.5 (2026-03-10)
+- 增强访问者设备信息记录（device_type, screen_resolution, timezone, language）
+- 添加设备类型检测（Desktop/Mobile/iPhone/Tablet/Bot/Crawler）
+- 优化 User-Agent 解析，支持更多浏览器和平台识别（Windows 版本区分等）
+- 审计页面添加多条件筛选下拉框（浏览器、平台、设备类型、事件类型、状态）
+- 优化审计表格布局，显示更详细的设备信息
+- 添加设备类型徽章标识
+- 增强统计信息（浏览器类型数、平台类型数）
+- 审计日志 API 支持多条件筛选
 
 ### v1.5.4 (2026-03-10)
 - 修复登录后跳转问题，现在跳转到工具箱主页（/www/）
