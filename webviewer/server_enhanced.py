@@ -570,10 +570,10 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
         elif self.path == '/audit':
             self.show_audit_page()
             return
-        elif self.path == '/api/audit-logs':
+        elif self.path.startswith('/api/audit-logs'):
             self.handle_audit_logs_api()
             return
-        elif self.path == '/api/stats':
+        elif self.path.startswith('/api/stats'):
             self.handle_stats_api()
             return
         elif self.path.startswith('/approve/'):

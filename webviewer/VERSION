@@ -1,0 +1,18 @@
+# WebViewer Version
+
+**Current Version:** v1.5.4
+
+## Release History
+
+### v1.5.4 (2026-03-10)
+- 修复登录后跳转问题，现在跳转到工具箱主页（/www/）
+- 添加 /www/, /bydesign/, /cherry-pick/, /momhand/, /siri-dream/ 路径支持
+- 修复浏览器提示下载而不是打开页面的问题
+- 优化 Content-Type 设置，支持更多文件类型
+- 添加 IP 白名单支持
+- 修复审计 API 查询参数处理
+
+### v1.5.3 (2026-03-08)
+- 初始发布版本
+- 访问审批系统
+- 飞书通知集成
