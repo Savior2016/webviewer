@@ -311,6 +311,12 @@ class DataManager:
                     for line in f:
                         try:
                             log = json.loads(line.strip())
+                            
+                            # 向后兼容：为旧数据添加 device_type 字段
+                            if 'device_type' not in log or not log['device_type']:
+                                ua = log.get('user_agent', '')
+                                log['device_type'] = DataManager._detect_device_type_static(ua)
+                            
                             # 过滤
                             if filter_ip and log.get('ip') != filter_ip:
                                 continue
@@ -337,6 +343,24 @@ class DataManager:
         
         # 分页
         return logs[offset:offset+limit]
+    
+    @staticmethod
+    def _detect_device_type_static(ua):
+        """静态方法：检测设备类型（用于旧日志记录）"""
+        ua_lower = ua.lower()
+        
+        if 'mobile' in ua_lower or ('android' in ua_lower and 'mobile' in ua_lower):
+            return 'Mobile'
+        elif 'iphone' in ua_lower:
+            return 'iPhone'
+        elif 'ipad' in ua_lower or 'tablet' in ua_lower:
+            return 'Tablet'
+        elif 'tv' in ua_lower or 'smart-tv' in ua_lower:
+            return 'SmartTV'
+        elif 'bot' in ua_lower or 'spider' in ua_lower or 'crawler' in ua_lower:
+            return 'Bot/Crawler'
+        else:
+            return 'Desktop'
     
     def get_pending_count(self):
         """获取待审批数量"""
@@ -564,7 +588,22 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
         """根据 IP 获取地理位置"""
         if ip.startswith('192.168.') or ip.startswith('10.') or ip == '127.0.0.1':
             return '内网'
-        return '未知'
+        
+        # 尝试从 IP 获取更详细的地理位置
+        try:
+            # 简单的 IP 段判断（常见地区）
+            if ip.startswith('223.104.') or ip.startswith('111.') or ip.startswith('120.'):
+                return '🇨🇳 中国'
+            elif ip.startswith('45.') or ip.startswith('104.') or ip.startswith('159.'):
+                return '🇺🇸 美国'
+            elif ip.startswith('185.') or ip.startswith('91.'):
+                return '🇪🇺 欧洲'
+            elif ip.startswith('103.') or ip.startswith('118.'):
+                return '🌏 亚洲'
+            else:
+                return '🌍 未知'
+        except:
+            return '未知'
     
     def check_access(self):
         """检查访问权限（审批系统）"""
@@ -1086,24 +1125,29 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f3f4f6; }
-        .header { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; }
-        .header h1 { font-size: 24px; }
-        .header a { color: white; text-decoration: none; padding: 8px 16px; background: rgba(255,255,255,0.2); border-radius: 8px; }
-        .container { max-width: 1600px; margin: 0 auto; padding: 40px 20px; }
-        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; margin-bottom: 30px; }
-        .stat-card { background: white; padding: 24px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        .stat-value { font-size: 32px; font-weight: bold; color: #667eea; }
-        .stat-label { color: #6b7280; margin-top: 8px; font-size: 14px; }
-        .filters { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
-        .filters input, .filters select { padding: 10px 14px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; }
-        .filters input { flex: 1; min-width: 150px; }
-        .filters select { min-width: 140px; background: white; }
-        .filters button { padding: 10px 24px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; }
+        .header { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+        .header h1 { font-size: 20px; }
+        .header nav { display: flex; gap: 10px; flex-wrap: wrap; }
+        .header a { color: white; text-decoration: none; padding: 8px 16px; background: rgba(255,255,255,0.2); border-radius: 8px; font-size: 14px; transition: background 0.2s; }
+        .header a:hover { background: rgba(255,255,255,0.3); }
+        .container { max-width: 100%; margin: 0 auto; padding: 20px 16px; }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; }
+        .stat-card { background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border: 2px solid transparent; }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .stat-card.active { border-color: #667eea; background: #f0f4ff; }
+        .stat-value { font-size: 28px; font-weight: bold; color: #667eea; }
+        .stat-label { color: #6b7280; margin-top: 6px; font-size: 13px; }
+        .filters { background: white; padding: 16px; border-radius: 12px; margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+        .filters input, .filters select { padding: 8px 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 13px; }
+        .filters input { flex: 1; min-width: 120px; }
+        .filters select { min-width: 120px; background: white; }
+        .filters button { padding: 8px 18px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 13px; }
         .filters button:hover { background: #5a67d8; }
         .log-table { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow-x: auto; }
-        .log-table table { width: 100%; border-collapse: collapse; min-width: 1200px; }
-        .log-table th, .log-table td { padding: 14px 16px; text-align: left; border-bottom: 1px solid #e5e7eb; font-size: 14px; }
-        .log-table th { background: #f9fafb; font-weight: 600; color: #374151; white-space: nowrap; }
+        .log-table-wrapper { overflow-x: auto; }
+        .log-table table { width: 100%; border-collapse: collapse; min-width: 900px; }
+        .log-table th, .log-table td { padding: 12px 14px; text-align: left; border-bottom: 1px solid #e5e7eb; font-size: 13px; }
+        .log-table th { background: #f9fafb; font-weight: 600; color: #374151; white-space: nowrap; position: sticky; top: 0; }
         .log-table tr:hover { background: #f9fafb; }
         .status-allowed { color: #10b981; font-weight: 500; }
         .status-blocked { color: #ef4444; font-weight: 500; }
@@ -1111,24 +1155,35 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
         .status-failed { color: #ef4444; font-weight: 500; }
         .refresh-btn { padding: 8px 16px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer; }
         .load-more { text-align: center; padding: 20px; }
-        .load-more button { padding: 12px 32px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 15px; }
-        .device-info { font-size: 12px; color: #6b7280; }
-        .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; }
+        .load-more button { padding: 12px 32px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; }
+        .device-info { font-size: 11px; color: #6b7280; }
+        .badge { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: 10px; font-weight: 500; }
         .badge-desktop { background: #dbeafe; color: #1e40af; }
         .badge-mobile { background: #fef3c7; color: #92400e; }
         .badge-iphone { background: #fce7f3; color: #9d174d; }
         .badge-tablet { background: #e0e7ff; color: #3730a3; }
         .badge-bot { background: #fee2e2; color: #991b1b; }
+        .location-flag { margin-right: 4px; }
+        @media (max-width: 768px) {
+            .header { padding: 12px 16px; }
+            .header h1 { font-size: 18px; }
+            .container { padding: 16px 12px; }
+            .stats { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            .stat-value { font-size: 24px; }
+            .filters { flex-direction: column; align-items: stretch; }
+            .filters input, .filters select, .filters button { width: 100%; }
+            .log-table th, .log-table td { padding: 10px 12px; font-size: 12px; }
+        }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>📊 访问审计日志</h1>
-        <div>
+        <nav>
             <a href="/pending">待审批</a>
-            <a href="/audit" style="margin-left: 10px;">🔄 审计</a>
-            <a href="/logout" style="margin-left: 10px;">退出登录</a>
-        </div>
+            <a href="/www/">工具箱</a>
+            <a href="/logout">退出登录</a>
+        </nav>
     </div>
     <div class="container">
         <div class="stats" id="stats"></div>
@@ -1241,12 +1296,12 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
                 if (!append) {
                     document.getElementById('logTable').innerHTML = '';
                     document.getElementById('stats').innerHTML = `
-                        <div class="stat-card"><div class="stat-value">${data.stats.total_visits}</div><div class="stat-label">总访问数</div></div>
-                        <div class="stat-card"><div class="stat-value">${data.stats.unique_ips}</div><div class="stat-label">独立 IP</div></div>
-                        <div class="stat-card"><div class="stat-value">${data.stats.today_visits}</div><div class="stat-label">今日访问</div></div>
-                        <div class="stat-card"><div class="stat-value">${data.stats.unique_browsers || 0}</div><div class="stat-label">浏览器类型</div></div>
-                        <div class="stat-card"><div class="stat-value">${data.stats.unique_platforms || 0}</div><div class="stat-label">平台类型</div></div>
-                        <div class="stat-card"><div class="stat-value">${data.stats.pending_approvals}</div><div class="stat-label">待审批</div></div>
+                        <div class="stat-card" onclick="filterByStat('total')"><div class="stat-value">${data.stats.total_visits}</div><div class="stat-label">📋 总访问数</div></div>
+                        <div class="stat-card" onclick="filterByStat('ips')"><div class="stat-value">${data.stats.unique_ips}</div><div class="stat-label">🌐 独立 IP</div></div>
+                        <div class="stat-card" onclick="filterByStat('today')"><div class="stat-value">${data.stats.today_visits}</div><div class="stat-label">📅 今日访问</div></div>
+                        <div class="stat-card" onclick="filterByStat('browsers')"><div class="stat-value">${data.stats.unique_browsers || 0}</div><div class="stat-label">🧭 浏览器类型</div></div>
+                        <div class="stat-card" onclick="filterByStat('platforms')"><div class="stat-value">${data.stats.unique_platforms || 0}</div><div class="stat-label">💻 平台类型</div></div>
+                        <div class="stat-card" onclick="filterByStat('pending')"><div class="stat-value">${data.stats.pending_approvals}</div><div class="stat-label">⏳ 待审批</div></div>
                     `;
                 }
                 
@@ -1280,6 +1335,31 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
         
         function loadMore() {
             loadLogs(true);
+        }
+        
+        function filterByStat(type) {
+            // 清除其他筛选
+            document.getElementById('filterIp').value = '';
+            document.getElementById('filterBrowser').value = '';
+            document.getElementById('filterPlatform').value = '';
+            document.getElementById('filterDevice').value = '';
+            document.getElementById('filterEvent').value = '';
+            document.getElementById('filterStatus').value = '';
+            
+            // 根据统计类型设置筛选
+            if (type === 'today') {
+                // 今日访问 - 暂时不设置特殊筛选，只是刷新
+            } else if (type === 'pending') {
+                window.location.href = '/pending';
+                return;
+            }
+            
+            // 移除所有卡片的 active 状态
+            document.querySelectorAll('.stat-card').forEach(card => card.classList.remove('active'));
+            // 添加当前卡片的 active 状态
+            event.target.closest('.stat-card').classList.add('active');
+            
+            loadLogs();
         }
         
         // 初始加载
