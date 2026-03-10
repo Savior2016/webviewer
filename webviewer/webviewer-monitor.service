@@ -1,0 +1,23 @@
+[Unit]
+Description=WebViewer Service Monitor
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/.openclaw/workspace/webviewer
+ExecStart=/bin/bash /root/.openclaw/workspace/webviewer/monitor.sh
+Restart=always
+RestartSec=10
+StandardOutput=append:/root/.openclaw/workspace/webviewer/monitor.log
+StandardError=append:/root/.openclaw/workspace/webviewer/monitor.log
+
+# 资源限制
+LimitNOFILE=65535
+LimitNPROC=4096
+
+# 环境变量
+Environment="PYTHONUNBUFFERED=1"
+
+[Install]
+WantedBy=multi-user.target
