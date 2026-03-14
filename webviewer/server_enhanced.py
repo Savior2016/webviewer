@@ -807,6 +807,12 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
                 return
             self.handle_audit_delete()
             return
+        elif self.path == '/api/send-message':
+            self.handle_send_message()
+            return
+        elif self.path == '/api/settings':
+            self.handle_settings()
+            return
         
         self.send_response(404)
         self.end_headers()
