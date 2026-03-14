@@ -6,9 +6,9 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=/root/.openclaw/workspace/webviewer
-ExecStart=/usr/bin/python3 /root/.openclaw/workspace/webviewer/server.py
+ExecStart=/root/.openclaw/workspace/webviewer/start.sh
 Restart=always
-RestartSec=3
+RestartSec=10
 
 [Install]
 WantedBy=multi-user.target

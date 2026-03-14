@@ -1008,33 +1008,36 @@
     
     // 检查登录状态
     function checkAdminAuth() {
-      // 检查是否有会话 Cookie
-      const cookies = document.cookie.split(';');
-      let isAdmin = false;
-      let isLoggedIn = false;
+      // 从 localStorage 读取登录状态（因为 HttpOnly Cookie JS 读不到）
+      let isAdmin = localStorage.getItem('wv_is_admin') === 'true';
+      let isLoggedIn = localStorage.getItem('wv_is_logged_in') === 'true';
       
-      console.log('🍪 Cookies:', document.cookie);
+      console.log('🔐 登录状态：isAdmin =', isAdmin, ', isLoggedIn =', isLoggedIn);
       
-      for (let cookie of cookies) {
-        const parts = cookie.trim().split('=');
-        const name = parts[0];
-        const value = parts[1];
-        console.log('  - Cookie:', name, '=', value ? value.substring(0, 20) + '...' : '');
-        
-        if (name === 'wv_admin_session' && value) {
-          isAdmin = true;
-          isLoggedIn = true;
-          console.log('✅ 检测到管理员会话');
-          break;
+      // 根据登录状态显示对应功能
+      const auditLink = document.getElementById('auditLink');
+      const pendingLink = document.getElementById('pendingLink');
+      const logoutLink = document.getElementById('logoutLink');
+      const adminLinks = document.getElementById('adminLinks');
+      const commonLinks = document.getElementById('commonLinks');
+      
+      if (isAdmin) {
+        // 管理员模式：显示审计、待审批
+        console.log('🔐 管理员模式：显示审计、待审批');
+        if (auditLink) auditLink.classList.remove('hidden');
+        if (pendingLink) pendingLink.classList.remove('hidden');
+        if (adminLinks) {
+          adminLinks.classList.remove('hidden');
+          adminLinks.classList.add('grid');
         }
-        if (name === 'wv_guest_session' && value) {
-          isLoggedIn = true;
-          console.log('✅ 检测到访客会话');
-          break;
+      } else {
+        // 访客模式：隐藏管理员功能
+        console.log('👤 访客模式：隐藏管理员功能');
+        if (adminLinks) {
+          adminLinks.classList.add('hidden');
+          adminLinks.classList.remove('grid');
         }
       }
-      
-      console.log('📊 状态：isAdmin =', isAdmin, ', isLoggedIn =', isLoggedIn);
       
       // 根据登录状态显示对应功能
       const auditLink = document.getElementById('auditLink');

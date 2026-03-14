@@ -1,0 +1,58 @@
+{
+  "1ddda14d-6445-4f41-8209-819436ef0adc": {
+    "session_id": "1ddda14d-6445-4f41-8209-819436ef0adc",
+    "ip": "221.219.243.106",
+    "approved_at": 1773381777.0734944,
+    "expires_at": 1773468177.0734951,
+    "auto_approved": true
+  },
+  "639d61e7-5528-4cd2-8d3b-d16a00fe837a": {
+    "session_id": "639d61e7-5528-4cd2-8d3b-d16a00fe837a",
+    "ip": "221.219.243.106",
+    "approved_at": 1773381777.9536595,
+    "expires_at": 1773468177.9536595,
+    "auto_approved": true
+  },
+  "693226e0-89f7-4bc4-ace5-a25af26f5d49": {
+    "session_id": "693226e0-89f7-4bc4-ace5-a25af26f5d49",
+    "ip": "127.0.0.1",
+    "approved_at": 1773381809.725418,
+    "expires_at": 1773468209.725418,
+    "auto_approved": true
+  },
+  "43bae262-2f1b-4ac2-be2e-7bccd6e3f086": {
+    "session_id": "43bae262-2f1b-4ac2-be2e-7bccd6e3f086",
+    "ip": "221.219.243.106",
+    "approved_at": 1773381910.0229466,
+    "expires_at": 1773468310.0229466,
+    "auto_approved": true
+  },
+  "ad053a66-d259-42ec-9e23-0c299a739d42": {
+    "session_id": "ad053a66-d259-42ec-9e23-0c299a739d42",
+    "ip": "221.219.243.106",
+    "approved_at": 1773381910.877297,
+    "expires_at": 1773468310.8772972,
+    "auto_approved": true
+  },
+  "b39ba343-92ad-4bab-984b-d3e571919fd5": {
+    "session_id": "b39ba343-92ad-4bab-984b-d3e571919fd5",
+    "ip": "127.0.0.1",
+    "approved_at": 1773381920.4667075,
+    "expires_at": 1773468320.4667075,
+    "auto_approved": true
+  },
+  "347a9577-0c34-4646-ae4a-16c967bdeba6": {
+    "session_id": "347a9577-0c34-4646-ae4a-16c967bdeba6",
+    "ip": "127.0.0.1",
+    "approved_at": 1773381920.4691133,
+    "expires_at": 1773468320.4691136,
+    "auto_approved": true
+  },
+  "6e21161e-8128-472c-bed7-336fa23107f8": {
+    "session_id": "6e21161e-8128-472c-bed7-336fa23107f8",
+    "ip": "127.0.0.1",
+    "approved_at": 1773381920.4946759,
+    "expires_at": 1773468320.494676,
+    "auto_approved": true
+  }
+}

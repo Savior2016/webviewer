@@ -188,126 +188,42 @@ data_manager = DataManager()
 # ==================== 飞书通知 ====================
 
 class FeishuNotifier:
-    """飞书消息通知"""
-    
-    @staticmethod
-    def get_tenant_token():
-        """获取飞书 tenant_access_token"""
-        if not Config.FEISHU_APP_ID or not Config.FEISHU_APP_SECRET:
-            raise ValueError("Feishu APP_ID or APP_SECRET not configured")
-        
-        response = requests.post(
-            'https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal',
-            json={'app_id': Config.FEISHU_APP_ID, 'app_secret': Config.FEISHU_APP_SECRET},
-            timeout=10
-        )
-        result = response.json()
-        if result.get('code') != 0:
-            raise ValueError(f"Feishu auth failed: {result}")
-        return result['tenant_access_token']
+    """飞书消息通知（简化版 - 使用 openclaw 通道）"""
     
     @staticmethod
     def send_approval_request(visitor_info, approval_id):
-        """发送审批请求到飞书"""
+        """发送审批请求 - 打印到日志，由 openclaw 转发"""
         try:
-            token = FeishuNotifier.get_tenant_token()
-            headers = {'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
-            
-            # 构建审批卡片消息
             verify_code = data_manager.pending_approvals[approval_id]['verification_code']
             server_ip = socket.gethostbyname(socket.gethostname())
             
-            # 创建交互式卡片
-            card_content = {
-                "config": {
-                    "wide_screen_mode": True
-                },
-                "header": {
-                    "template": "blue",
-                    "title": {
-                        "content": "🔐 WebViewer 访问审批请求",
-                        "tag": "plain_text"
-                    }
-                },
-                "elements": [
-                    {
-                        "tag": "div",
-                        "text": {
-                            "content": f"**🌐 访问来源**: {visitor_info.get('ip', 'Unknown')}\n**🖥️ 设备**: {visitor_info.get('user_agent', 'Unknown')[:50]}...\n**📍 位置**: {visitor_info.get('location', 'Unknown')}\n**⏰ 时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-                            "tag": "lark_md"
-                        }
-                    },
-                    {
-                        "tag": "divider"
-                    },
-                    {
-                        "tag": "action",
-                        "actions": [
-                            {
-                                "tag": "button",
-                                "text": {
-                                    "content": "✅ 同意访问",
-                                    "tag": "plain_text"
-                                },
-                                "type": "primary",
-                                "value": {
-                                    "type": "approve",
-                                    "approval_id": approval_id,
-                                    "verify_code": verify_code
-                                },
-                                "url": f"https://{server_ip}:{Config.HTTPS_PORT}/approve/{approval_id}"
-                            },
-                            {
-                                "tag": "button",
-                                "text": {
-                                    "content": "❌ 拒绝访问",
-                                    "tag": "plain_text"
-                                },
-                                "type": "danger",
-                                "value": {
-                                    "type": "reject",
-                                    "approval_id": approval_id,
-                                    "verify_code": verify_code
-                                },
-                                "url": f"https://{server_ip}:{Config.HTTPS_PORT}/reject/{approval_id}"
-                            }
-                        ]
-                    },
-                    {
-                        "tag": "note",
-                        "elements": [
-                            {
-                                "tag": "plain_text",
-                                "content": f"验证码：{verify_code} | 待审批数量：{data_manager.get_pending_count() + 1}"
-                            }
-                        ]
-                    }
-                ]
-            }
+            # 构建审批信息
+            msg = f"""
+🔐 WebViewer 访问审批请求
+
+🌐 访问来源：{visitor_info.get('ip', 'Unknown')}
+🖥️ 设备：{visitor_info.get('user_agent', 'Unknown')[:50]}...
+📍 位置：{visitor_info.get('location', 'Unknown')}
+⏰ 时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+审批链接:
+✅ 同意：https://{server_ip}:{Config.HTTPS_PORT}/approve/{approval_id}
+❌ 拒绝：https://{server_ip}:{Config.HTTPS_PORT}/reject/{approval_id}
+
+验证码：{verify_code}
+"""
+            print("=" * 60)
+            print("📢 审批请求（请通过 openclaw 飞书通道转发）:")
+            print(msg)
+            print("=" * 60)
             
-            # 发送交互卡片
-            response = requests.post(
-                'https://open.feishu.cn/open-apis/im/v1/messages',
-                headers=headers,
-                params={'receive_id_type': 'open_id'},
-                json={
-                    "receive_id": Config.FEISHU_USER_OPEN_ID,
-                    "msg_type": "interactive",
-                    "content": json.dumps(card_content, ensure_ascii=False)
-                },
-                timeout=10
-            )
+            # TODO: 集成 openclaw message API
+            # 目前通过日志输出，管理员可以查看 pending 页面审批
             
-            result = response.json()
-            if result.get('code') != 0:
-                print(f"⚠️ 飞书消息发送失败：{result}")
-                return False
-            
-            print(f"✅ 飞书审批请求已发送：{approval_id}")
             return True
             
         except Exception as e:
-            print(f"❌ 发送飞书通知失败：{e}")
+            print(f"❌ 发送通知失败：{e}")
             return False
 
 # ==================== HTTP 请求处理 ====================

@@ -695,15 +695,6 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
             # 访客等待审批状态检查 API
             self.handle_check_status()
             return
-        elif self.path.startswith('/waiting/'):
-            # 访客等待审批页面
-            approval_id = self.path.split('/waiting/')[-1]
-            if approval_id:
-                self.show_waiting_page(approval_id)
-            else:
-                self.send_response(404)
-                self.end_headers()
-            return
         elif self.path.startswith('/www/') or self.path.startswith('/bydesign/') or self.path.startswith('/cherry-pick/') or self.path.startswith('/momhand/') or self.path.startswith('/siri-dream/') or self.path.startswith('/reports/') or self.path == '/transitions.css' or self.path.startswith('/js/'):
             # 工具箱相关路径，检查管理员会话或访客会话
             # 优先检查管理员会话
@@ -798,9 +789,6 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
         if self.path == '/api/login':
             self.handle_login()
             return
-        elif self.path == '/api/guest-request':
-            self.handle_guest_request()
-            return
         elif self.path == '/api/audit-delete':
             if not self.check_admin_auth()[0]:
                 self.send_json({'error': 'Unauthorized'}, 401)
@@ -829,17 +817,13 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
             status = record.get('status', 'pending')
             
             if status == 'approved':
-                # 审批通过，返回会话 ID 并设置 Cookie
+                # 审批通过，返回会话 ID
                 session_id = record.get('session_id')
-                self.send_response(200)
-                self.send_header('Content-Type', 'application/json')
-                self.send_header('Set-Cookie', f'wv_guest_session={session_id}; Path=/; Max-Age={Config.SESSION_TIMEOUT_HOURS*3600}; HttpOnly')
-                self.end_headers()
-                self.wfile.write(json.dumps({
+                self.send_json({
                     'approved': True,
                     'session_id': session_id,
                     'status': status
-                }).encode())
+                })
             elif status == 'rejected':
                 self.send_json({
                     'approved': False,
@@ -854,45 +838,6 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
                 })
         else:
             self.send_json({'error': 'Approval not found'}, 404)
-    
-    def handle_guest_request(self):
-        """处理访客访问申请"""
-        content_length = int(self.headers.get('Content-Length', 0))
-        body = self.rfile.read(content_length)
-        
-        try:
-            data = json.loads(body)
-            name = data.get('name', '')
-            contact = data.get('contact', '')
-            reason = data.get('reason', '')
-            
-            if not name or not contact or not reason:
-                self.send_json({'success': False, 'error': '请填写完整信息'}, 400)
-                return
-            
-            visitor_info = self.get_visitor_info({'event_type': 'guest_request'})
-            visitor_info['guest_name'] = name
-            visitor_info['guest_contact'] = contact
-            visitor_info['guest_reason'] = reason
-            
-            # 创建待审批记录
-            approval_record = data_manager.create_pending_approval(visitor_info)
-            approval_id = approval_record['approval_id']
-            
-            # 发送飞书通知
-            data_manager.send_feishu_approval(visitor_info, approval_id)
-            
-            visitor_info['status'] = 'pending'
-            data_manager.log_audit(visitor_info)
-            
-            self.send_json({
-                'success': True,
-                'approval_id': approval_id,
-                'message': '申请已提交，等待管理员审批'
-            })
-            
-        except Exception as e:
-            self.send_json({'success': False, 'error': str(e)}, 500)
     
     def handle_login(self):
         """处理登录请求"""
@@ -938,21 +883,10 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
         if admin_session:
             data_manager.logout_admin(admin_session.value)
         
-        # 返回一个页面清除 localStorage 后跳转
-        self.send_response(200)
-        self.send_header('Content-Type', 'text/html; charset=utf-8')
+        self.send_response(302)
+        self.send_header('Location', '/login')
         self.send_header('Set-Cookie', 'wv_admin_session=; Path=/; Max-Age=0')
         self.end_headers()
-        
-        html = '''<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>退出登录</title>
-<script>
-localStorage.removeItem('wv_is_admin');
-localStorage.removeItem('wv_is_logged_in');
-setTimeout(() => { window.location.href = '/login'; }, 500);
-</script>
-</head><body><p>正在退出登录...</p></body></html>'''
-        self.wfile.write(html.encode())
     
     def handle_audit_logs_api(self):
         """获取审计日志 API"""
@@ -1303,9 +1237,6 @@ setTimeout(() => { window.location.href = '/login'; }, 500);
             transition: all 0.3s;
             margin-top: 10px;
         }
-        .btn-submit-guest {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        }
         .btn-submit:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 40px rgba(102, 126, 234, 0.4);
@@ -1361,11 +1292,11 @@ setTimeout(() => { window.location.href = '/login'; }, 500);
         </div>
         
         <!-- 访客申请悬浮球 -->
-        <div class="orb orb-guest" onclick="openGuestModal()">
+        <a href="#" class="orb orb-guest" onclick="requestAccess(event)">
             <div class="orb-icon">🚀</div>
             <div class="orb-label">访客申请</div>
             <div class="orb-desc">申请临时访问权限</div>
-        </div>
+        </a>
     </div>
     
     <!-- 登录模态框 -->
@@ -1391,33 +1322,6 @@ setTimeout(() => { window.location.href = '/login'; }, 500);
         </div>
     </div>
     
-    <!-- 访客申请模态框 -->
-    <div class="modal" id="guestModal">
-        <div class="modal-content">
-            <button class="btn-close" onclick="closeGuestModal()">×</button>
-            <div class="modal-header">
-                <h2>🚀 访客访问申请</h2>
-                <p>请填写您的访问信息</p>
-            </div>
-            <form id="guestForm">
-                <div class="form-group">
-                    <label>姓名</label>
-                    <input type="text" id="guestName" required placeholder="请输入您的姓名">
-                </div>
-                <div class="form-group">
-                    <label>联系方式</label>
-                    <input type="text" id="guestContact" required placeholder="微信/手机号/邮箱">
-                </div>
-                <div class="form-group">
-                    <label>访问事由</label>
-                    <input type="text" id="guestReason" required placeholder="请简要说明访问目的">
-                </div>
-                <button type="submit" class="btn-submit btn-submit-guest">提交申请</button>
-                <div class="error-msg" id="guestError"></div>
-            </form>
-        </div>
-    </div>
-    
     <script>
         // 打开登录模态框
         function openLoginModal() {
@@ -1429,26 +1333,10 @@ setTimeout(() => { window.location.href = '/login'; }, 500);
             document.getElementById('loginModal').classList.remove('active');
         }
         
-        // 打开访客模态框
-        function openGuestModal() {
-            document.getElementById('guestModal').classList.add('active');
-        }
-        
-        // 关闭访客模态框
-        function closeGuestModal() {
-            document.getElementById('guestModal').classList.remove('active');
-        }
-        
         // 点击模态框外部关闭
         document.getElementById('loginModal').addEventListener('click', (e) => {
             if (e.target.id === 'loginModal') {
                 closeLoginModal();
-            }
-        });
-        
-        document.getElementById('guestModal').addEventListener('click', (e) => {
-            if (e.target.id === 'guestModal') {
-                closeGuestModal();
             }
         });
         
@@ -1468,9 +1356,6 @@ setTimeout(() => { window.location.href = '/login'; }, 500);
                 const data = await res.json();
                 
                 if (data.success) {
-                    // 保存登录状态到 localStorage（因为 HttpOnly Cookie JS 读不到）
-                    localStorage.setItem('wv_is_admin', 'true');
-                    localStorage.setItem('wv_is_logged_in', 'true');
                     window.location.href = data.redirect;
                 } else {
                     errorEl.textContent = data.error || '登录失败';
@@ -1482,152 +1367,21 @@ setTimeout(() => { window.location.href = '/login'; }, 500);
             }
         });
         
-        // 访客申请提交
-        document.getElementById('guestForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const name = document.getElementById('guestName').value;
-            const contact = document.getElementById('guestContact').value;
-            const reason = document.getElementById('guestReason').value;
-            const errorEl = document.getElementById('guestError');
-            
+        // 访客请求访问
+        async function requestAccess(event) {
+            event.preventDefault();
             try {
-                const res = await fetch('/api/guest-request', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({name, contact, reason})
-                });
-                const data = await res.json();
-                
-                if (data.success) {
-                    // 跳转到等待审批页面
-                    window.location.href = '/waiting/' + data.approval_id;
-                } else {
-                    errorEl.textContent = data.error || '申请失败';
-                    errorEl.style.display = 'block';
-                }
+                // 触发审批流程
+                const res = await fetch('/');
+                window.location.href = '/';
             } catch (err) {
-                errorEl.textContent = '网络错误，请重试';
-                errorEl.style.display = 'block';
+                alert('请求失败，请重试');
             }
-        });
+        }
     </script>
 </body>
 </html>
 '''.encode())
-    
-    def show_waiting_page(self, approval_id):
-        """显示等待审批页面"""
-        self.send_response(200)
-        self.send_header('Content-Type', 'text/html; charset=utf-8')
-        self.end_headers()
-        
-        html = f"""<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>等待审批 - WebViewer</title>
-    <style>
-        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }}
-        .waiting-box {{
-            background: rgba(255, 255, 255, 0.95);
-            padding: 40px;
-            border-radius: 24px;
-            box-shadow: 0 25px 80px rgba(0,0,0,0.3);
-            text-align: center;
-            max-width: 450px;
-            width: 100%;
-        }}
-        .icon {{ font-size: 64px; margin-bottom: 20px; }}
-        h1 {{ color: #1f2937; font-size: 24px; margin-bottom: 12px; }}
-        p {{ color: #6b7280; font-size: 14px; line-height: 1.6; margin-bottom: 20px; }}
-        .status {{
-            background: #f3f4f6;
-            padding: 16px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-        }}
-        .status-label {{ color: #6b7280; font-size: 13px; }}
-        .status-value {{ color: #1f2937; font-weight: 600; margin-top: 5px; font-family: monospace; }}
-        .spinner {{
-            border: 3px solid #f3f4f6;
-            border-top: 3px solid #10b981;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-        }}
-        @keyframes spin {{
-            0% {{ transform: rotate(0deg); }}
-            100% {{ transform: rotate(360deg); }}
-        }}
-        .note {{ font-size: 12px; color: #9ca3af; margin-top: 20px; }}
-        .success {{ color: #10b981; font-weight: 600; }}
-        .rejected {{ color: #ef4444; font-weight: 600; }}
-    </style>
-</head>
-<body>
-    <div class="waiting-box">
-        <div class="icon">⏳</div>
-        <h1>等待管理员审批</h1>
-        <p>您的访问申请已提交，管理员将在飞书收到通知。<br>审批通过后将自动跳转。</p>
-        
-        <div class="status">
-            <div class="status-label">申请 ID</div>
-            <div class="status-value">{approval_id[:8]}...</div>
-        </div>
-        
-        <div class="spinner"></div>
-        
-        <p class="note">页面将每 5 秒自动检查审批状态<br>如长时间未响应，请联系管理员</p>
-    </div>
-    
-    <script>
-        const approvalId = '{approval_id}';
-        
-        // 每 5 秒检查一次审批状态
-        setInterval(async () => {{
-            try {{
-                const res = await fetch('/check-status/' + approvalId);
-                const data = await res.json();
-                
-                if (data.status === 'approved') {{
-                    // 保存访客登录状态
-                    localStorage.setItem('wv_is_admin', 'false');
-                    localStorage.setItem('wv_is_logged_in', 'true');
-                    
-                    document.querySelector('.icon').textContent = '✅';
-                    document.querySelector('h1').textContent = '审批通过！';
-                    document.querySelector('p').innerHTML = '<span class="success">正在跳转到工具箱...</span>';
-                    document.querySelector('.spinner').style.display = 'none';
-                    
-                    setTimeout(() => {{
-                        window.location.href = '/www/';
-                    }}, 1000);
-                }} else if (data.status === 'rejected') {{
-                    document.querySelector('.icon').textContent = '❌';
-                    document.querySelector('h1').textContent = '访问已拒绝';
-                    document.querySelector('p').innerHTML = '<span class="rejected">您的访问申请已被管理员拒绝。</span>';
-                    document.querySelector('.spinner').style.display = 'none';
-                }}
-            }} catch (err) {{
-                console.error('检查状态失败:', err);
-            }}
-        }}, 5000);
-    </script>
-</body>
-</html>"""
-        self.wfile.write(html.encode())
     
     def show_home_page(self):
         """显示主页"""
