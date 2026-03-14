@@ -833,7 +833,7 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
                 session_id = record.get('session_id')
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
-                self.send_header('Set-Cookie', f'wv_guest_session={session_id}; Path=/; Max-Age={Config.SESSION_TIMEOUT_HOURS*3600}; HttpOnly')
+                self.send_header('Set-Cookie', f'wv_session={session_id}; Path=/; Max-Age={Config.SESSION_TIMEOUT_HOURS*3600}; HttpOnly')
                 self.end_headers()
                 self.wfile.write(json.dumps({
                     'approved': True,
