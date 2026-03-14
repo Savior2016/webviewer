@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>测试登录状态</title>
+</head>
+<body>
+    <h1>登录状态测试</h1>
+    <div id="result"></div>
+    <hr>
+    <h2>手动测试</h2>
+    <button onclick="setAdmin()">设置为管理员</button>
+    <button onclick="setGuest()">设置为访客</button>
+    <button onclick="clearStorage()">清除</button>
+    <hr>
+    <div id="buttons">
+        <p>管理员按钮：</p>
+        <div id="adminButtons" style="display:none;">
+            <button>📊 审计日志</button>
+            <button>⏳ 待审批</button>
+        </div>
+        <p>通用按钮：</p>
+        <div id="commonButtons">
+            <button>📜 运行日志</button>
+            <button>📋 版本信息</button>
+            <button id="logoutBtn" style="display:none;">🚪 退出登录</button>
+        </div>
+    </div>
+    <script>
+        function check() {
+            const isAdmin = localStorage.getItem('wv_is_admin') === 'true';
+            const isLoggedIn = localStorage.getItem('wv_is_logged_in') === 'true';
+            
+            document.getElementById('result').innerHTML = 
+                '<p>wv_is_admin: ' + localStorage.getItem('wv_is_admin') + '</p>' +
+                '<p>wv_is_logged_in: ' + localStorage.getItem('wv_is_logged_in') + '</p>' +
+                '<p><strong>isAdmin: ' + isAdmin + '</strong></p>' +
+                '<p><strong>isLoggedIn: ' + isLoggedIn + '</strong></p>';
+            
+            document.getElementById('adminButtons').style.display = isAdmin ? 'block' : 'none';
+            document.getElementById('logoutBtn').style.display = isLoggedIn ? 'inline' : 'none';
+        }
+        
+        function setAdmin() {
+            localStorage.setItem('wv_is_admin', 'true');
+            localStorage.setItem('wv_is_logged_in', 'true');
+            check();
+            alert('已设置为管理员，请刷新主页面');
+        }
+        
+        function setGuest() {
+            localStorage.setItem('wv_is_admin', 'false');
+            localStorage.setItem('wv_is_logged_in', 'true');
+            check();
+            alert('已设置为访客，请刷新主页面');
+        }
+        
+        function clearStorage() {
+            localStorage.removeItem('wv_is_admin');
+            localStorage.removeItem('wv_is_logged_in');
+            check();
+        }
+        
+        check();
+    </script>
+</body>
+</html>

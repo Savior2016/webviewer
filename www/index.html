@@ -1003,57 +1003,61 @@
     // 页面加载时初始化
     window.addEventListener('DOMContentLoaded', () => {
       loadHistory();
-      checkAdminAuth();
+      // 延迟执行确保 DOM 完全加载
+      setTimeout(() => {
+        checkAdminAuth();
+      }, 100);
     });
     
     // 检查登录状态
     function checkAdminAuth() {
-      // 从 localStorage 读取登录状态（因为 HttpOnly Cookie JS 读不到）
-      let isAdmin = localStorage.getItem('wv_is_admin') === 'true';
-      let isLoggedIn = localStorage.getItem('wv_is_logged_in') === 'true';
-      
-      console.log('🔐 登录状态：isAdmin =', isAdmin, ', isLoggedIn =', isLoggedIn);
-      
-      // 根据登录状态显示对应功能
-      const auditLink = document.getElementById('auditLink');
-      const pendingLink = document.getElementById('pendingLink');
-      const logoutLink = document.getElementById('logoutLink');
-      const adminLinks = document.getElementById('adminLinks');
-      const commonLinks = document.getElementById('commonLinks');
-      
-      if (isAdmin) {
-        // 管理员模式：显示审计、待审批
-        console.log('🔐 管理员模式：显示审计、待审批');
-        if (auditLink) auditLink.classList.remove('hidden');
-        if (pendingLink) pendingLink.classList.remove('hidden');
+      try {
+        // 从 localStorage 读取登录状态
+        const adminValue = localStorage.getItem('wv_is_admin');
+        const loggedValue = localStorage.getItem('wv_is_logged_in');
+        const isAdmin = adminValue === 'true';
+        const isLoggedIn = loggedValue === 'true';
+        
+        console.log('🔐 localStorage:', {adminValue, loggedValue, isAdmin, isLoggedIn});
+        
+        // 获取元素
+        const auditLink = document.getElementById('auditLink');
+        const pendingLink = document.getElementById('pendingLink');
+        const logoutLink = document.getElementById('logoutLink');
+        const adminLinks = document.getElementById('adminLinks');
+        
+        console.log('📋 元素状态:', {
+          auditLink: !!auditLink,
+          pendingLink: !!pendingLink,
+          logoutLink: !!logoutLink,
+          adminLinks: !!adminLinks
+        });
+        
+        // 管理员功能
         if (adminLinks) {
-          adminLinks.classList.remove('hidden');
-          adminLinks.classList.add('grid');
+          if (isAdmin) {
+            console.log('✅ 显示管理员功能');
+            adminLinks.style.display = 'grid';
+            if (auditLink) auditLink.style.display = 'flex';
+            if (pendingLink) pendingLink.style.display = 'flex';
+          } else {
+            console.log('❌ 隐藏管理员功能');
+            adminLinks.style.display = 'none';
+          }
         }
-      } else {
-        // 访客模式：隐藏管理员功能
-        console.log('👤 访客模式：隐藏管理员功能');
-        if (adminLinks) {
-          adminLinks.classList.add('hidden');
-          adminLinks.classList.remove('grid');
+        
+        // 退出登录按钮
+        if (logoutLink) {
+          if (isLoggedIn) {
+            console.log('✅ 显示退出登录');
+            logoutLink.style.display = 'flex';
+          } else {
+            console.log('❌ 隐藏退出登录');
+            logoutLink.style.display = 'none';
+          }
         }
-      }
-      
-      // 退出登录按钮：所有登录用户都可见
-      if (isLoggedIn && logoutLink) {
-        console.log('🚪 显示退出登录按钮');
-        logoutLink.classList.remove('hidden');
-        logoutLink.style.display = 'flex';
-      }
-      
-      // 确保 commonLinks 布局正确
-      if (commonLinks) {
-        commonLinks.classList.remove('grid-cols-2', 'grid-cols-3');
-        if (isLoggedIn) {
-          commonLinks.classList.add('grid-cols-3'); // 登录用户 3 个按钮
-        } else {
-          commonLinks.classList.add('grid-cols-2'); // 未登录 2 个按钮
-        }
+      } catch (e) {
+        console.error('❌ checkAdminAuth 错误:', e);
       }
     }
   </script>
