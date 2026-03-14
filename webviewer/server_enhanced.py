@@ -691,17 +691,36 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
                 return
             self.show_pending_page()
             return
-        elif self.path.startswith('/www/') or self.path.startswith('/bydesign/') or self.path.startswith('/cherry-pick/') or self.path.startswith('/momhand/') or self.path.startswith('/siri-dream/') or self.path.startswith('/reports/') or self.path == '/transitions.css' or self.path.startswith('/js/'):
-            # 工具箱相关路径，使用审批会话检查（一次审批，24 小时有效）
-            allowed, session_id, visitor_info = self.check_access()
-            
-            if not allowed:
-                # 未授权，创建待审批并显示等待页面
-                approval_record = data_manager.create_pending_approval(visitor_info)
-                approval_id = approval_record['approval_id']
-                FeishuNotifier.send_approval_request(visitor_info, approval_id)
+        elif self.path.startswith('/check-status/'):
+            # 访客等待审批状态检查 API
+            self.handle_check_status()
+            return
+        elif self.path.startswith('/waiting/'):
+            # 访客等待审批页面
+            approval_id = self.path.split('/waiting/')[-1]
+            if approval_id:
                 self.show_waiting_page(approval_id)
-                return
+            else:
+                self.send_response(404)
+                self.end_headers()
+            return
+        elif self.path.startswith('/www/') or self.path.startswith('/bydesign/') or self.path.startswith('/cherry-pick/') or self.path.startswith('/momhand/') or self.path.startswith('/siri-dream/') or self.path.startswith('/reports/') or self.path == '/transitions.css' or self.path.startswith('/js/'):
+            # 工具箱相关路径，检查管理员会话或访客会话
+            # 优先检查管理员会话
+            if self.check_admin_auth()[0]:
+                # 管理员直接放行
+                pass  # 继续向下执行，提供静态文件
+            else:
+                # 非管理员，检查访客会话
+                allowed, session_id, visitor_info = self.check_access()
+                
+                if not allowed:
+                    # 未授权，创建待审批并显示等待页面（不发送飞书通知）
+                    approval_record = data_manager.create_pending_approval(visitor_info)
+                    approval_id = approval_record['approval_id']
+                    # 访客登录不发送飞书通知，等待管理员审批即可
+                    self.show_waiting_page(approval_id)
+                    return
             
             # 已授权，提供静态文件
             import os
@@ -762,11 +781,9 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
         
         # 发送访问告警（仅当被阻止时）
         if not allowed and session_id is None:
-            # 创建待审批
+            # 创建待审批（不发送飞书通知，等待管理员审批即可）
             approval_record = data_manager.create_pending_approval(visitor_info)
             approval_id = approval_record['approval_id']
-            # 发送通知
-            FeishuNotifier.send_approval_request(visitor_info, approval_id)
             # 显示等待页面
             self.show_waiting_page(approval_id)
             return
@@ -781,6 +798,9 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
         if self.path == '/api/login':
             self.handle_login()
             return
+        elif self.path == '/api/guest-request':
+            self.handle_guest_request()
+            return
         elif self.path == '/api/audit-delete':
             if not self.check_admin_auth()[0]:
                 self.send_json({'error': 'Unauthorized'}, 401)
@@ -790,6 +810,89 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
         
         self.send_response(404)
         self.end_headers()
+    
+    def handle_check_status(self):
+        """处理访客等待审批状态检查"""
+        import http.cookies
+        
+        # 从路径中提取 approval_id
+        path_parts = self.path.split('/')
+        approval_id = path_parts[-1] if len(path_parts) > 2 else None
+        
+        if not approval_id:
+            self.send_json({'error': 'Invalid approval ID'}, 400)
+            return
+        
+        # 检查审批状态
+        if approval_id in data_manager.pending_approvals:
+            record = data_manager.pending_approvals[approval_id]
+            status = record.get('status', 'pending')
+            
+            if status == 'approved':
+                # 审批通过，返回会话 ID 并设置 Cookie
+                session_id = record.get('session_id')
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Set-Cookie', f'wv_guest_session={session_id}; Path=/; Max-Age={Config.SESSION_TIMEOUT_HOURS*3600}; HttpOnly')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    'approved': True,
+                    'session_id': session_id,
+                    'status': status
+                }).encode())
+            elif status == 'rejected':
+                self.send_json({
+                    'approved': False,
+                    'rejected': True,
+                    'status': status
+                })
+            else:
+                # 仍在等待
+                self.send_json({
+                    'approved': False,
+                    'status': 'pending'
+                })
+        else:
+            self.send_json({'error': 'Approval not found'}, 404)
+    
+    def handle_guest_request(self):
+        """处理访客访问申请"""
+        content_length = int(self.headers.get('Content-Length', 0))
+        body = self.rfile.read(content_length)
+        
+        try:
+            data = json.loads(body)
+            name = data.get('name', '')
+            contact = data.get('contact', '')
+            reason = data.get('reason', '')
+            
+            if not name or not contact or not reason:
+                self.send_json({'success': False, 'error': '请填写完整信息'}, 400)
+                return
+            
+            visitor_info = self.get_visitor_info({'event_type': 'guest_request'})
+            visitor_info['guest_name'] = name
+            visitor_info['guest_contact'] = contact
+            visitor_info['guest_reason'] = reason
+            
+            # 创建待审批记录
+            approval_record = data_manager.create_pending_approval(visitor_info)
+            approval_id = approval_record['approval_id']
+            
+            # 发送飞书通知
+            data_manager.send_feishu_approval(visitor_info, approval_id)
+            
+            visitor_info['status'] = 'pending'
+            data_manager.log_audit(visitor_info)
+            
+            self.send_json({
+                'success': True,
+                'approval_id': approval_id,
+                'message': '申请已提交，等待管理员审批'
+            })
+            
+        except Exception as e:
+            self.send_json({'success': False, 'error': str(e)}, 500)
     
     def handle_login(self):
         """处理登录请求"""
@@ -941,7 +1044,7 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
         self.wfile.write(html.encode())
     
     def show_login_page(self):
-        """显示登录页面（支持管理员登录和访客请求访问）"""
+        """显示登录页面（圆形悬浮球设计）"""
         self.send_response(200)
         self.send_header('Content-Type', 'text/html; charset=utf-8')
         self.end_headers()
@@ -956,142 +1059,312 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #24243e 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
             min-height: 100vh;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
             padding: 20px;
             position: relative;
             overflow: hidden;
         }
+        /* 背景动画 */
         body::before {
             content: '';
             position: absolute;
-            width: 400px;
-            height: 400px;
-            background: rgba(255,255,255,0.1);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(102, 126, 234, 0.3) 0%, transparent 70%);
             border-radius: 50%;
-            top: -100px;
-            left: -100px;
-            animation: float 6s ease-in-out infinite;
+            top: -200px;
+            left: -200px;
+            animation: pulse 8s ease-in-out infinite;
         }
         body::after {
             content: '';
             position: absolute;
-            width: 300px;
-            height: 300px;
-            background: rgba(255,255,255,0.1);
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(118, 75, 162, 0.3) 0%, transparent 70%);
             border-radius: 50%;
-            bottom: -50px;
-            right: -50px;
-            animation: float 8s ease-in-out infinite reverse;
+            bottom: -150px;
+            right: -150px;
+            animation: pulse 10s ease-in-out infinite reverse;
         }
-        @keyframes float {
-            0%, 100% { transform: translateY(0) rotate(0deg); }
-            50% { transform: translateY(-20px) rotate(10deg); }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.2); opacity: 0.8; }
         }
-        .container {
+        /* 标题 */
+        .title {
             position: relative;
-            z-index: 1;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            max-width: 900px;
-            width: 100%;
+            z-index: 10;
+            text-align: center;
+            margin-bottom: 60px;
         }
-        .card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
+        .title h1 {
+            font-size: 48px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 12px;
+            letter-spacing: -1px;
+        }
+        .title p {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 16px;
+            font-weight: 300;
+        }
+        /* 悬浮球容器 */
+        .orb-container {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            gap: 80px;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        /* 悬浮球 */
+        .orb {
+            position: relative;
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
+            animation: float 4s ease-in-out infinite;
+        }
+        .orb:nth-child(1) { animation-delay: 0s; }
+        .orb:nth-child(2) { animation-delay: -2s; }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+        .orb:hover {
+            transform: translateY(-30px) scale(1.05);
+        }
+        /* 管理员登录球 */
+        .orb-admin {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.9) 0%, rgba(118, 75, 162, 0.9) 100%);
+            box-shadow: 
+                0 20px 60px rgba(102, 126, 234, 0.4),
+                inset 0 -10px 40px rgba(0, 0, 0, 0.2),
+                inset 0 10px 40px rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        .orb-admin:hover {
+            box-shadow: 
+                0 30px 80px rgba(102, 126, 234, 0.6),
+                inset 0 -10px 40px rgba(0, 0, 0, 0.2),
+                inset 0 10px 40px rgba(255, 255, 255, 0.3);
+        }
+        /* 访客申请球 */
+        .orb-guest {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.9) 0%, rgba(5, 150, 105, 0.9) 100%);
+            box-shadow: 
+                0 20px 60px rgba(16, 185, 129, 0.4),
+                inset 0 -10px 40px rgba(0, 0, 0, 0.2),
+                inset 0 10px 40px rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        .orb-guest:hover {
+            box-shadow: 
+                0 30px 80px rgba(16, 185, 129, 0.6),
+                inset 0 -10px 40px rgba(0, 0, 0, 0.2),
+                inset 0 10px 40px rgba(255, 255, 255, 0.3);
+        }
+        /* 悬浮球内容 */
+        .orb-icon {
+            font-size: 56px;
+            margin-bottom: 12px;
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+        }
+        .orb-label {
+            color: white;
+            font-size: 18px;
+            font-weight: 600;
+            text-align: center;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        .orb-desc {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 12px;
+            margin-top: 6px;
+            text-align: center;
+            max-width: 160px;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+        /* 登录表单模态框 */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .modal.active {
+            display: flex;
+            opacity: 1;
+        }
+        .modal-content {
+            background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
             padding: 40px;
             border-radius: 24px;
-            box-shadow: 0 25px 50px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transform: scale(0.9);
+            transition: transform 0.3s;
+        }
+        .modal.active .modal-content {
+            transform: scale(1);
+        }
+        .modal-header {
             text-align: center;
-            transition: transform 0.3s, box-shadow 0.3s;
+            margin-bottom: 30px;
         }
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 35px 70px rgba(0,0,0,0.3);
+        .modal-header h2 {
+            color: white;
+            font-size: 28px;
+            margin-bottom: 8px;
         }
-        .card-icon {
-            font-size: 64px;
+        .modal-header p {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 14px;
+        }
+        .form-group {
             margin-bottom: 20px;
         }
-        h2 { color: #1f2937; margin-bottom: 15px; font-size: 24px; }
-        .desc { color: #6b7280; margin-bottom: 30px; font-size: 14px; line-height: 1.6; }
-        .form-group { margin-bottom: 20px; text-align: left; }
-        label { display: block; margin-bottom: 8px; color: #374151; font-weight: 500; font-size: 14px; }
-        input {
+        .form-group label {
+            display: block;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .form-group input {
             width: 100%;
-            padding: 12px 16px;
-            border: 2px solid #e5e7eb;
+            padding: 14px 18px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
             border-radius: 12px;
+            color: white;
             font-size: 15px;
-            transition: border-color 0.2s, box-shadow 0.2s;
+            transition: all 0.2s;
         }
-        input:focus { 
-            outline: none; 
+        .form-group input:focus {
+            outline: none;
             border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            background: rgba(255, 255, 255, 0.1);
         }
-        .btn {
+        .form-group input::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+        }
+        .btn-submit {
             width: 100%;
-            padding: 14px;
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border: none;
             border-radius: 12px;
+            color: white;
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+        .btn-submit-guest {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px rgba(102, 126, 234, 0.4);
+        }
+        .btn-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
             transition: all 0.2s;
         }
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
+        .btn-close:hover {
+            background: rgba(255, 255, 255, 0.2);
         }
-        .btn-primary:hover { 
-            transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        .error-msg {
+            color: #ef4444;
+            font-size: 14px;
+            margin-top: 10px;
+            text-align: center;
+            display: none;
         }
-        .btn-secondary {
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: white;
-        }
-        .btn-secondary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.4);
-        }
-        .error { color: #ef4444; margin-bottom: 20px; font-size: 14px; display: none; }
-        .divider {
-            display: flex;
-            align-items: center;
-            margin: 30px 0;
-        }
-        .divider::before, .divider::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: #e5e7eb;
-        }
-        .divider span {
-            padding: 0 15px;
-            color: #9ca3af;
-            font-size: 13px;
-        }
-        @media (max-width: 768px) {
-            .container { grid-template-columns: 1fr; }
-            .card { padding: 30px 20px; }
+        /* 响应式 */
+        @media (max-width: 600px) {
+            .title h1 { font-size: 32px; }
+            .orb-container { gap: 40px; }
+            .orb { width: 160px; height: 160px; }
+            .orb-icon { font-size: 42px; }
+            .orb-label { font-size: 15px; }
+            .orb-desc { font-size: 11px; }
+            .modal-content { padding: 30px 20px; margin: 20px; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- 管理员登录卡片 -->
-        <div class="card">
-            <div class="card-icon">🔐</div>
-            <h2>管理员登录</h2>
-            <p class="desc">使用管理员账号登录，访问所有功能和审计日志</p>
-            <div class="error" id="loginError"></div>
+    <div class="title">
+        <h1>WebViewer</h1>
+        <p>选择您的访问方式</p>
+    </div>
+    
+    <div class="orb-container">
+        <!-- 管理员登录悬浮球 -->
+        <div class="orb orb-admin" onclick="openLoginModal()">
+            <div class="orb-icon">🔐</div>
+            <div class="orb-label">管理员登录</div>
+            <div class="orb-desc">访问所有功能和审计日志</div>
+        </div>
+        
+        <!-- 访客申请悬浮球 -->
+        <div class="orb orb-guest" onclick="openGuestModal()">
+            <div class="orb-icon">🚀</div>
+            <div class="orb-label">访客申请</div>
+            <div class="orb-desc">申请临时访问权限</div>
+        </div>
+    </div>
+    
+    <!-- 登录模态框 -->
+    <div class="modal" id="loginModal">
+        <div class="modal-content">
+            <button class="btn-close" onclick="closeLoginModal()">×</button>
+            <div class="modal-header">
+                <h2>🔐 管理员登录</h2>
+                <p>请输入您的管理员账号</p>
+            </div>
             <form id="loginForm">
                 <div class="form-group">
                     <label>用户名</label>
@@ -1101,30 +1374,79 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
                     <label>密码</label>
                     <input type="password" id="password" required placeholder="请输入密码">
                 </div>
-                <button type="submit" class="btn btn-primary">立即登录</button>
+                <button type="submit" class="btn-submit">立即登录</button>
+                <div class="error-msg" id="loginError"></div>
             </form>
         </div>
-        
-        <!-- 访客访问卡片 -->
-        <div class="card">
-            <div class="card-icon">🚀</div>
-            <h2>访客访问</h2>
-            <p class="desc">申请临时访问权限，管理员审批后即可使用工具箱</p>
-            <div class="error" id="guestError"></div>
-            <button onclick="requestAccess()" class="btn btn-secondary">申请访问</button>
-            <div class="divider">
-                <span>审批后 24 小时内有效</span>
+    </div>
+    
+    <!-- 访客申请模态框 -->
+    <div class="modal" id="guestModal">
+        <div class="modal-content">
+            <button class="btn-close" onclick="closeGuestModal()">×</button>
+            <div class="modal-header">
+                <h2>🚀 访客访问申请</h2>
+                <p>请填写您的访问信息</p>
             </div>
-            <p style="font-size:13px;color:#9ca3af;">✨ 一次审批，24 小时内可自由访问所有工具</p>
+            <form id="guestForm">
+                <div class="form-group">
+                    <label>姓名</label>
+                    <input type="text" id="guestName" required placeholder="请输入您的姓名">
+                </div>
+                <div class="form-group">
+                    <label>联系方式</label>
+                    <input type="text" id="guestContact" required placeholder="微信/手机号/邮箱">
+                </div>
+                <div class="form-group">
+                    <label>访问事由</label>
+                    <input type="text" id="guestReason" required placeholder="请简要说明访问目的">
+                </div>
+                <button type="submit" class="btn-submit btn-submit-guest">提交申请</button>
+                <div class="error-msg" id="guestError"></div>
+            </form>
         </div>
     </div>
     
     <script>
+        // 打开登录模态框
+        function openLoginModal() {
+            document.getElementById('loginModal').classList.add('active');
+        }
+        
+        // 关闭登录模态框
+        function closeLoginModal() {
+            document.getElementById('loginModal').classList.remove('active');
+        }
+        
+        // 打开访客模态框
+        function openGuestModal() {
+            document.getElementById('guestModal').classList.add('active');
+        }
+        
+        // 关闭访客模态框
+        function closeGuestModal() {
+            document.getElementById('guestModal').classList.remove('active');
+        }
+        
+        // 点击模态框外部关闭
+        document.getElementById('loginModal').addEventListener('click', (e) => {
+            if (e.target.id === 'loginModal') {
+                closeLoginModal();
+            }
+        });
+        
+        document.getElementById('guestModal').addEventListener('click', (e) => {
+            if (e.target.id === 'guestModal') {
+                closeGuestModal();
+            }
+        });
+        
         // 管理员登录
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
+            const errorEl = document.getElementById('loginError');
             
             try {
                 const res = await fetch('/api/login', {
@@ -1137,36 +1459,157 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
                 if (data.success) {
                     window.location.href = data.redirect;
                 } else {
-                    document.getElementById('loginError').textContent = data.error || '登录失败';
-                    document.getElementById('loginError').style.display = 'block';
+                    errorEl.textContent = data.error || '登录失败';
+                    errorEl.style.display = 'block';
                 }
             } catch (err) {
-                document.getElementById('loginError').textContent = '网络错误，请重试';
-                document.getElementById('loginError').style.display = 'block';
+                errorEl.textContent = '网络错误，请重试';
+                errorEl.style.display = 'block';
             }
         });
         
-        // 访客请求访问
-        async function requestAccess() {
-            const btn = event.target;
-            btn.disabled = true;
-            btn.textContent = '请求中...';
+        // 访客申请提交
+        document.getElementById('guestForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('guestName').value;
+            const contact = document.getElementById('guestContact').value;
+            const reason = document.getElementById('guestReason').value;
+            const errorEl = document.getElementById('guestError');
             
             try {
-                const res = await fetch('/');
-                // 会触发审批流程，跳转到等待页面
-                window.location.href = '/';
+                const res = await fetch('/api/guest-request', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({name, contact, reason})
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    // 跳转到等待审批页面
+                    window.location.href = '/waiting/' + data.approval_id;
+                } else {
+                    errorEl.textContent = data.error || '申请失败';
+                    errorEl.style.display = 'block';
+                }
             } catch (err) {
-                document.getElementById('guestError').textContent = '请求失败，请重试';
-                document.getElementById('guestError').style.display = 'block';
-                btn.disabled = false;
-                btn.textContent = '申请访问';
+                errorEl.textContent = '网络错误，请重试';
+                errorEl.style.display = 'block';
             }
-        }
+        });
     </script>
 </body>
 </html>
 '''.encode())
+    
+    def show_waiting_page(self, approval_id):
+        """显示等待审批页面"""
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/html; charset=utf-8')
+        self.end_headers()
+        
+        html = f"""<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>等待审批 - WebViewer</title>
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }}
+        .waiting-box {{
+            background: rgba(255, 255, 255, 0.95);
+            padding: 40px;
+            border-radius: 24px;
+            box-shadow: 0 25px 80px rgba(0,0,0,0.3);
+            text-align: center;
+            max-width: 450px;
+            width: 100%;
+        }}
+        .icon {{ font-size: 64px; margin-bottom: 20px; }}
+        h1 {{ color: #1f2937; font-size: 24px; margin-bottom: 12px; }}
+        p {{ color: #6b7280; font-size: 14px; line-height: 1.6; margin-bottom: 20px; }}
+        .status {{
+            background: #f3f4f6;
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }}
+        .status-label {{ color: #6b7280; font-size: 13px; }}
+        .status-value {{ color: #1f2937; font-weight: 600; margin-top: 5px; font-family: monospace; }}
+        .spinner {{
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #10b981;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }}
+        @keyframes spin {{
+            0% {{ transform: rotate(0deg); }}
+            100% {{ transform: rotate(360deg); }}
+        }}
+        .note {{ font-size: 12px; color: #9ca3af; margin-top: 20px; }}
+        .success {{ color: #10b981; font-weight: 600; }}
+        .rejected {{ color: #ef4444; font-weight: 600; }}
+    </style>
+</head>
+<body>
+    <div class="waiting-box">
+        <div class="icon">⏳</div>
+        <h1>等待管理员审批</h1>
+        <p>您的访问申请已提交，管理员将在飞书收到通知。<br>审批通过后将自动跳转。</p>
+        
+        <div class="status">
+            <div class="status-label">申请 ID</div>
+            <div class="status-value">{approval_id[:8]}...</div>
+        </div>
+        
+        <div class="spinner"></div>
+        
+        <p class="note">页面将每 5 秒自动检查审批状态<br>如长时间未响应，请联系管理员</p>
+    </div>
+    
+    <script>
+        const approvalId = '{approval_id}';
+        
+        // 每 5 秒检查一次审批状态
+        setInterval(async () => {{
+            try {{
+                const res = await fetch('/check-status/' + approvalId);
+                const data = await res.json();
+                
+                if (data.status === 'approved') {{
+                    document.querySelector('.icon').textContent = '✅';
+                    document.querySelector('h1').textContent = '审批通过！';
+                    document.querySelector('p').innerHTML = '<span class="success">正在跳转到工具箱...</span>';
+                    document.querySelector('.spinner').style.display = 'none';
+                    
+                    setTimeout(() => {{
+                        window.location.href = '/www/';
+                    }}, 1000);
+                }} else if (data.status === 'rejected') {{
+                    document.querySelector('.icon').textContent = '❌';
+                    document.querySelector('h1').textContent = '访问已拒绝';
+                    document.querySelector('p').innerHTML = '<span class="rejected">您的访问申请已被管理员拒绝。</span>';
+                    document.querySelector('.spinner').style.display = 'none';
+                }}
+            }} catch (err) {{
+                console.error('检查状态失败:', err);
+            }}
+        }}, 5000);
+    </script>
+</body>
+</html>"""
+        self.wfile.write(html.encode())
     
     def show_home_page(self):
         """显示主页"""
@@ -1567,28 +2010,66 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
             margin: 20px auto;
         }}
         @keyframes spin {{ 0% {{ transform: rotate(0deg); }} 100% {{ transform: rotate(360deg); }} }}
+        .rejected {{
+            color: #ef4444;
+            margin-top: 15px;
+            display: none;
+        }}
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="icon">⏳</div>
-        <h1>等待审批</h1>
-        <p>您的访问请求已提交，正在等待管理员审批。<br>审批通过后页面将自动刷新。</p>
+        <div class="icon" id="statusIcon">⏳</div>
+        <h1 id="statusTitle">等待审批</h1>
+        <p id="statusDesc">您的访问请求已提交，正在等待管理员审批。<br>审批通过后页面将自动跳转。</p>
         <div class="status">
-            <div class="spinner"></div>
+            <div class="spinner" id="spinner"></div>
             <p style="margin: 0;">审批 ID: {approval_id[:8]}...</p>
+            <p class="rejected" id="rejectedMsg">❌ 您的访问请求已被拒绝</p>
         </div>
     </div>
     <script>
-        setInterval(async () => {{
+        let checkCount = 0;
+        const maxChecks = 72; // 最多检查 6 分钟（72 * 5 秒）
+        
+        async function checkStatus() {{
+            if (checkCount >= maxChecks) {{
+                document.getElementById('statusTitle').textContent = '审批超时';
+                document.getElementById('statusDesc').textContent = '审批请求已超时，请重新尝试访问。';
+                document.getElementById('spinner').style.display = 'none';
+                document.getElementById('statusIcon').textContent = '⏰';
+                return;
+            }}
+            
             try {{
                 const res = await fetch(`/check-status/{approval_id}`);
                 const data = await res.json();
+                
                 if (data.approved) {{
-                    window.location.reload();
+                    // 审批通过，跳转到工具箱主页
+                    document.getElementById('statusTitle').textContent = '✅ 审批通过';
+                    document.getElementById('statusDesc').textContent = '正在跳转到工具箱主页...';
+                    document.getElementById('spinner').style.display = 'none';
+                    document.getElementById('statusIcon').textContent = '✅';
+                    window.location.href = '/www/';
+                }} else if (data.rejected) {{
+                    // 审批被拒绝
+                    document.getElementById('statusTitle').textContent = '访问被拒绝';
+                    document.getElementById('statusDesc').textContent = '很抱歉，您的访问请求已被管理员拒绝。';
+                    document.getElementById('spinner').style.display = 'none';
+                    document.getElementById('statusIcon').textContent = '❌';
+                    document.getElementById('rejectedMsg').style.display = 'block';
                 }}
-            }} catch (e) {{}}
-        }}, 5000);
+                // 如果仍在 pending，继续轮询
+            }} catch (e) {{
+                console.error('检查状态失败:', e);
+            }}
+            
+            checkCount++;
+        }}
+        
+        // 每 5 秒检查一次状态
+        setInterval(checkStatus, 5000);
     </script>
 </body>
 </html>

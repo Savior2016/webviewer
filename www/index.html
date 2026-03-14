@@ -232,24 +232,37 @@
         <!-- 底部导航 - 分割线以上 -->
         <!-- 分隔线 -->
         <div class="w-16 h-px bg-white/10 my-2"></div>
-        <!-- 底部功能链接 - 4 个一行 -->
-        <nav class="grid grid-cols-4 gap-3 w-full max-w-2xl px-4">
-          <a href="/audit" class="flex flex-col items-center gap-2 text-gray-300 hover:text-purple-400 text-xs transition-colors py-3 px-2 rounded-lg hover:bg-white/5">
-            <span class="text-2xl">📊</span>
-            <span>审计日志</span>
-          </a>
-          <button onclick="showLogs()" class="flex flex-col items-center gap-2 text-gray-300 hover:text-green-400 text-xs transition-colors py-3 px-2 rounded-lg hover:bg-white/5">
-            <span class="text-2xl">📜</span>
-            <span>运行日志</span>
-          </button>
-          <button onclick="showVersion()" class="flex flex-col items-center gap-2 text-gray-300 hover:text-purple-400 text-xs transition-colors py-3 px-2 rounded-lg hover:bg-white/5">
-            <span class="text-2xl">📋</span>
-            <span>版本信息</span>
-          </button>
-          <a href="/server.crt" download="server.crt" class="flex flex-col items-center gap-2 text-gray-300 hover:text-blue-400 text-xs transition-colors py-3 px-2 rounded-lg hover:bg-white/5">
-            <span class="text-2xl">🔒</span>
-            <span>下载证书</span>
-          </a>
+        <!-- 底部功能链接 - 管理员可见审计、待审批和退出登录，访客可见基本功能 -->
+        <nav class="grid gap-3 w-full max-w-2xl px-4" id="footerNav">
+          <!-- 管理员专属功能 -->
+          <div class="grid grid-cols-3 gap-3 w-full" id="adminLinks">
+            <!-- 审计日志 - 仅管理员可见 -->
+            <a href="/audit" id="auditLink" class="hidden flex flex-col items-center gap-2 text-gray-300 hover:text-purple-400 text-xs transition-colors py-3 px-2 rounded-lg hover:bg-white/5">
+              <span class="text-2xl">📊</span>
+              <span>审计日志</span>
+            </a>
+            <!-- 待审批 - 仅管理员可见 -->
+            <a href="/pending" id="pendingLink" class="hidden flex flex-col items-center gap-2 text-gray-300 hover:text-orange-400 text-xs transition-colors py-3 px-2 rounded-lg hover:bg-white/5">
+              <span class="text-2xl">⏳</span>
+              <span>待审批</span>
+            </a>
+          </div>
+          <!-- 其他功能 - 所有人可见 -->
+          <div class="grid grid-cols-3 gap-3" id="commonLinks">
+            <button onclick="showLogs()" class="flex flex-col items-center gap-2 text-gray-300 hover:text-green-400 text-xs transition-colors py-3 px-2 rounded-lg hover:bg-white/5">
+              <span class="text-2xl">📜</span>
+              <span>运行日志</span>
+            </button>
+            <button onclick="showVersion()" class="flex flex-col items-center gap-2 text-gray-300 hover:text-purple-400 text-xs transition-colors py-3 px-2 rounded-lg hover:bg-white/5">
+              <span class="text-2xl">📋</span>
+              <span>版本信息</span>
+            </button>
+            <!-- 退出登录 - 所有人可见 -->
+            <a href="/logout" id="logoutLink" class="hidden flex flex-col items-center gap-2 text-gray-300 hover:text-red-400 text-xs transition-colors py-3 px-2 rounded-lg hover:bg-white/5">
+              <span class="text-2xl">🚪</span>
+              <span>退出登录</span>
+            </a>
+          </div>
         </nav>
         <!-- 版权信息 -->
         <div class="pt-4">
@@ -990,7 +1003,62 @@
     // 页面加载时初始化
     window.addEventListener('DOMContentLoaded', () => {
       loadHistory();
+      checkAdminAuth();
     });
+    
+    // 检查登录状态
+    function checkAdminAuth() {
+      // 检查是否有会话 Cookie
+      const cookies = document.cookie.split(';');
+      let isAdmin = false;
+      let isLoggedIn = false;
+      
+      for (let cookie of cookies) {
+        const [name] = cookie.trim().split('=');
+        if (name === 'wv_admin_session') {
+          isAdmin = true;
+          isLoggedIn = true;
+          break;
+        }
+        if (name === 'wv_guest_session') {
+          isLoggedIn = true;
+          break;
+        }
+      }
+      
+      // 根据登录状态显示对应功能
+      const auditLink = document.getElementById('auditLink');
+      const pendingLink = document.getElementById('pendingLink');
+      const logoutLink = document.getElementById('logoutLink');
+      const adminLinks = document.getElementById('adminLinks');
+      
+      if (isAdmin) {
+        // 管理员模式：显示审计、待审批
+        if (auditLink) auditLink.classList.remove('hidden');
+        if (pendingLink) pendingLink.classList.remove('hidden');
+        if (adminLinks) {
+          adminLinks.classList.remove('hidden');
+          adminLinks.classList.add('grid');
+        }
+      } else {
+        // 访客模式：隐藏管理员功能
+        if (adminLinks) {
+          adminLinks.classList.add('hidden');
+          adminLinks.classList.remove('grid');
+        }
+      }
+      
+      // 退出登录按钮：所有登录用户都可见
+      if (isLoggedIn && logoutLink) {
+        logoutLink.classList.remove('hidden');
+        // 将 commonLinks 改为 3 列（确保退出登录显示）
+        const commonLinks = document.getElementById('commonLinks');
+        if (commonLinks) {
+          commonLinks.classList.remove('grid-cols-3');
+          commonLinks.classList.add('grid-cols-3');
+        }
+      }
+    }
   </script>
 </body>
 </html>
