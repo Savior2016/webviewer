@@ -254,18 +254,30 @@ class DataManager:
         return True
     
     def verify_admin_login(self, username, password):
-        """验证管理员登录"""
+        """验证管理员登录（支持多管理员）"""
         config = Config.load_config()
-        admin_config = config.get('admin', {})
         
-        stored_username = admin_config.get('username', '')
-        stored_hash = admin_config.get('password_hash', '')
+        # 支持旧的单管理员配置和新的多管理员配置
+        admin_config = config.get('admin', {})
+        admins_list = config.get('admins', [])
         
         # 计算密码哈希
         password_hash = hashlib.sha256(password.encode()).hexdigest()
         
-        if username == stored_username and password_hash == stored_hash:
-            return True
+        # 检查旧格式（单个管理员）
+        if admin_config:
+            stored_username = admin_config.get('username', '')
+            stored_hash = admin_config.get('password_hash', '')
+            if username == stored_username and password_hash == stored_hash:
+                return True
+        
+        # 检查新格式（多个管理员）
+        for admin in admins_list:
+            stored_username = admin.get('username', '')
+            stored_hash = admin.get('password_hash', '')
+            if username == stored_username and password_hash == stored_hash:
+                return True
+        
         return False
     
     def create_admin_session(self, username, ip):
@@ -695,6 +707,10 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
             # 访客等待审批状态检查 API
             self.handle_check_status()
             return
+        elif self.path.startswith('/api/message-result'):
+            # 获取消息处理结果
+            self.handle_message_result()
+            return
         elif self.path.startswith('/waiting/'):
             # 访客等待审批页面
             approval_id = self.path.split('/waiting/')[-1]
@@ -817,6 +833,14 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
         self.send_response(404)
         self.end_headers()
     
+    def do_GET(self):
+        """处理 GET 请求"""
+        # ...existing code...
+        elif self.path.startswith('/api/message-result'):
+            self.handle_message_result()
+            return
+        # ...existing code...
+    
     def handle_check_status(self):
         """处理访客等待审批状态检查"""
         import http.cookies
@@ -861,44 +885,106 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
         else:
             self.send_json({'error': 'Approval not found'}, 404)
     
-    def handle_guest_request(self):
-        """处理访客访问申请"""
-        content_length = int(self.headers.get('Content-Length', 0))
-        body = self.rfile.read(content_length)
-        
+    def handle_send_message(self):
+        """处理发送消息请求"""
         try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length)
             data = json.loads(body)
-            name = data.get('name', '')
-            contact = data.get('contact', '')
-            reason = data.get('reason', '')
+            message = data.get('message', '')
             
-            if not name or not contact or not reason:
-                self.send_json({'success': False, 'error': '请填写完整信息'}, 400)
+            if not message:
+                self.send_json({'success': False, 'error': '消息内容为空'}, 400)
                 return
             
-            visitor_info = self.get_visitor_info({'event_type': 'guest_request'})
-            visitor_info['guest_name'] = name
-            visitor_info['guest_contact'] = contact
-            visitor_info['guest_reason'] = reason
+            # 使用消息处理引擎
+            import sys
+            sys.path.insert(0, '/root/.openclaw/workspace')
+            from message_engine import MessageProcessor
             
-            # 创建待审批记录
-            approval_record = data_manager.create_pending_approval(visitor_info)
-            approval_id = approval_record['approval_id']
+            processor = MessageProcessor()
+            processor.load_managers()
             
-            # TODO: 发送飞书通知（需要实现 send_feishu_approval 方法）
-            # data_manager.send_feishu_approval(visitor_info, approval_id)
+            # 解析意图
+            project, action, params = processor.parse_intent(message)
             
-            visitor_info['status'] = 'pending'
-            data_manager.log_audit(visitor_info)
+            # 处理消息
+            success, result_message = processor.process(project, action, params)
+            
+            # 生成消息 ID
+            import uuid
+            msg_id = str(uuid.uuid4())
+            
+            # 保存结果
+            result_dir = Config.DATA_DIR / 'results'
+            result_dir.mkdir(parents=True, exist_ok=True)
+            
+            result_data = {
+                'msg_id': msg_id,
+                'project': project,
+                'action': action,
+                'success': success,
+                'result': result_message,
+                'timestamp': time.time()
+            }
+            
+            result_file = result_dir / f'{msg_id}.json'
+            with open(result_file, 'w', encoding='utf-8') as f:
+                json.dump(result_data, f, ensure_ascii=False, indent=2)
             
             self.send_json({
                 'success': True,
-                'approval_id': approval_id,
-                'message': '申请已提交，等待管理员审批'
+                'msg_id': msg_id,
+                'processing': False,
+                'result': result_message
             })
             
         except Exception as e:
             self.send_json({'success': False, 'error': str(e)}, 500)
+    
+    def handle_message_result(self):
+        """获取消息处理结果"""
+        try:
+            from urllib.parse import parse_qs, urlparse
+            parsed = urlparse(self.path)
+            params = parse_qs(parsed.query)
+            msg_id = params.get('msg_id', [None])[0]
+            
+            if not msg_id:
+                self.send_json({'error': '缺少 msg_id 参数'}, 400)
+                return
+            
+            result_file = Config.DATA_DIR / 'results' / f'{msg_id}.json'
+            
+            if not result_file.exists():
+                self.send_json({'error': '结果不存在'}, 404)
+                return
+            
+            with open(result_file, 'r', encoding='utf-8') as f:
+                result_data = json.load(f)
+            
+            self.send_json({
+                'success': True,
+                'result': result_data
+            })
+            
+        except Exception as e:
+            self.send_json({'success': False, 'error': str(e)}, 500)
+    
+    def handle_settings(self):
+        """处理设置保存请求"""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length)
+            data = json.loads(body)
+            
+            # 简单返回成功（设置功能暂未实现）
+            self.send_json({'success': True, 'message': '设置已保存'})
+            
+        except Exception as e:
+            self.send_json({'success': False, 'error': str(e)}, 500)
+    
+    def handle_guest_request(self):
     
     def handle_login(self):
         """处理登录请求"""

@@ -128,5 +128,30 @@
     },
     "timestamp": 1773503176.7618546,
     "status": "pending"
+  },
+  "0d91f3cd-2433-41fd-b5c1-e0167bb9acc1": {
+    "approval_id": "0d91f3cd-2433-41fd-b5c1-e0167bb9acc1",
+    "verification_code": "3E989F",
+    "visitor_info": {
+      "ip": "77.83.39.82",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.84 Safari/537.36",
+      "path": "/.env",
+      "method": "GET",
+      "referer": "",
+      "language": "",
+      "platform": "macOS",
+      "browser": "Chrome",
+      "device_type": "Desktop",
+      "screen_resolution": "",
+      "timezone": "",
+      "location": "🌍 未知",
+      "timestamp": 1773505422.8809152,
+      "datetime": "2026-03-15T00:23:42.880915",
+      "event_type": "page_access",
+      "status": "blocked",
+      "session_id": ""
+    },
+    "timestamp": 1773505422.8812232,
+    "status": "pending"
   }
 }

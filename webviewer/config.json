@@ -1,8 +1,14 @@
 {
-  "admin": {
-    "username": "yangjiukui",
-    "password_hash": "393a58a897f871b6c803f5b283ec31edcce18d97979a6e6df406438d5391bbc9"
-  },
+  "admins": [
+    {
+      "username": "yangjiukui",
+      "password_hash": "393a58a897f871b6c803f5b283ec31edcce18d97979a6e6df406438d5391bbc9"
+    },
+    {
+      "username": "friday",
+      "password_hash": "7c7760fb40ab5a13ba9a296186e720ff6690489776a0fc438cbe42ae5b24690b"
+    }
+  ],
   "api_token": "wv_tok_3feb60dd2164cd04bdc1f644449919c3",
   "whitelist_ips": [
     "43.153.153.62",
