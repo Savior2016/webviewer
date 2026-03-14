@@ -2107,17 +2107,35 @@ setTimeout(() => { window.location.href = '/login'; }, 500);
             status = record.get('status', 'pending')
             time_str = datetime.fromtimestamp(record.get('timestamp', 0)).strftime('%Y-%m-%d %H:%M:%S')
             approval_id = record.get('approval_id', '')
+            guest_name = visitor.get('guest_name', '-')
+            guest_contact = visitor.get('guest_contact', '-')
+            guest_reason = visitor.get('guest_reason', '-')
+            
+            # 状态样式
+            status_style = {
+                'pending': 'color: #f59e0b;',
+                'approved': 'color: #10b981;',
+                'rejected': 'color: #ef4444;'
+            }.get(status, '')
+            
+            status_text = {
+                'pending': '⏳ 等待中',
+                'approved': '✅ 已通过',
+                'rejected': '❌ 已拒绝'
+            }.get(status, status)
             
             rows += f'''
             <tr>
+                <td><code style="background:#f3f4f6;padding:2px 6px;border-radius:4px;font-size:12px;">{approval_id[:12]}...</code></td>
                 <td>{time_str}</td>
+                <td>{guest_name}</td>
+                <td>{guest_contact}</td>
+                <td>{guest_reason}</td>
                 <td>{visitor.get('ip', 'Unknown')}</td>
-                <td>{visitor.get('path', '/')}</td>
-                <td>{visitor.get('browser', 'Unknown')}</td>
-                <td>{status}</td>
+                <td style="{status_style}">{status_text}</td>
                 <td>
-                    {f'<a href="/approve/{approval_id}" style="color:#10b981">✅ 同意</a>' if status == 'pending' else '-'}
-                    {f'<a href="/reject/{approval_id}" style="color:#ef4444;margin-left:10px">❌ 拒绝</a>' if status == 'pending' else ''}
+                    {f'<a href="/approve/{approval_id}" style="color:#10b981;text-decoration:none;">✅ 同意</a>' if status == 'pending' else '-'}
+                    {f'<a href="/reject/{approval_id}" style="color:#ef4444;margin-left:10px;text-decoration:none;">❌ 拒绝</a>' if status == 'pending' else ''}
                 </td>
             </tr>
             '''
@@ -2127,39 +2145,72 @@ setTimeout(() => { window.location.href = '/login'; }, 500);
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>待审批列表 | WebViewer</title>
     <style>
-        body {{ font-family: sans-serif; background: #f3f4f6; padding: 40px; }}
-        .container {{ max-width: 1200px; margin: 0 auto; }}
-        h1 {{ margin-bottom: 20px; }}
-        table {{ width: 100%; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }}
-        th, td {{ padding: 16px; text-align: left; border-bottom: 1px solid #e5e7eb; }}
-        th {{ background: #f9fafb; }}
-        .header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }}
-        .header a {{ color: #667eea; text-decoration: none; }}
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 40px 20px; }}
+        .container {{ max-width: 1400px; margin: 0 auto; }}
+        .card {{ background: white; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); overflow: hidden; }}
+        .header {{ padding: 24px 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; display: flex; justify-content: space-between; align-items: center; }}
+        .header h1 {{ font-size: 24px; }}
+        .header a {{ color: white; text-decoration: none; opacity: 0.8; }}
+        .header a:hover {{ opacity: 1; }}
+        .content {{ padding: 24px; }}
+        table {{ width: 100%; border-collapse: collapse; }}
+        th, td {{ padding: 14px 12px; text-align: left; border-bottom: 1px solid #e5e7eb; font-size: 14px; }}
+        th {{ background: #f9fafb; font-weight: 600; color: #374151; white-space: nowrap; }}
+        tr:hover {{ background: #f9fafb; }}
+        .empty {{ text-align: center; padding: 40px; color: #9ca3af; }}
+        .stats {{ display: flex; gap: 24px; margin-bottom: 24px; }}
+        .stat {{ background: #f3f4f6; padding: 16px 24px; border-radius: 12px; }}
+        .stat-value {{ font-size: 28px; font-weight: 700; color: #667eea; }}
+        .stat-label {{ font-size: 12px; color: #6b7280; margin-top: 4px; }}
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>📋 待审批列表</h1>
-            <a href="/audit">← 返回审计日志</a>
+        <div class="card">
+            <div class="header">
+                <h1>📋 待审批列表</h1>
+                <a href="/www/">← 返回工具箱</a>
+            </div>
+            <div class="content">
+                <div class="stats">
+                    <div class="stat">
+                        <div class="stat-value">{len([r for r in pending_list if r.get('status') == 'pending'])}</div>
+                        <div class="stat-label">等待中</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">{len([r for r in pending_list if r.get('status') == 'approved'])}</div>
+                        <div class="stat-label">已通过</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">{len([r for r in pending_list if r.get('status') == 'rejected'])}</div>
+                        <div class="stat-label">已拒绝</div>
+                    </div>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>申请 ID</th>
+                                <th>时间</th>
+                                <th>姓名</th>
+                                <th>联系方式</th>
+                                <th>访问事由</th>
+                                <th>IP 地址</th>
+                                <th>状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {rows if rows else '<tr><td colspan="8" class="empty">暂无待审批记录</td></tr>'}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
-        <table>
-            <thead>
-                <tr>
-                    <th>时间</th>
-                    <th>IP 地址</th>
-                    <th>路径</th>
-                    <th>设备</th>
-                    <th>状态</th>
-                    <th>操作</th>
-                </tr>
-            </thead>
-            <tbody>
-                {rows if rows else '<tr><td colspan="6" style="text-align:center;color:#999">暂无待审批记录</td></tr>'}
-            </tbody>
-        </table>
     </div>
 </body>
 </html>
