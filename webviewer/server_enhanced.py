@@ -1611,10 +1611,15 @@ setTimeout(() => { window.location.href = '/login'; }, 500);
                     document.querySelector('p').innerHTML = '<span class="success">正在跳转到工具箱...</span>';
                     document.querySelector('.spinner').style.display = 'none';
                     
-                    // 等待 Cookie 生效后跳转（延迟 3 秒）
+                    // 等待 Cookie 生效后跳转（延迟 5 秒确保 Cookie 生效）
                     setTimeout(() => {{
-                        window.location.href = '/www/';
-                    }}, 3000);
+                        // 先访问一个简单页面测试 Cookie 是否生效
+                        fetch('/www/', {{method: 'HEAD', credentials: 'include'}}).then(() => {{
+                            window.location.href = '/www/';
+                        }}).catch(() => {{
+                            window.location.href = '/www/';
+                        }});
+                    }}, 5000);
                 }} else if (data.status === 'rejected') {{
                     document.querySelector('.icon').textContent = '❌';
                     document.querySelector('h1').textContent = '访问已拒绝';
