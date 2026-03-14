@@ -1039,31 +1039,6 @@
         }
       }
       
-      // 根据登录状态显示对应功能
-      const auditLink = document.getElementById('auditLink');
-      const pendingLink = document.getElementById('pendingLink');
-      const logoutLink = document.getElementById('logoutLink');
-      const adminLinks = document.getElementById('adminLinks');
-      const commonLinks = document.getElementById('commonLinks');
-      
-      if (isAdmin) {
-        // 管理员模式：显示审计、待审批
-        console.log('🔐 管理员模式：显示审计、待审批');
-        if (auditLink) auditLink.classList.remove('hidden');
-        if (pendingLink) pendingLink.classList.remove('hidden');
-        if (adminLinks) {
-          adminLinks.classList.remove('hidden');
-          adminLinks.classList.add('grid');
-        }
-      } else {
-        // 访客模式：隐藏管理员功能
-        console.log('👤 访客模式：隐藏管理员功能');
-        if (adminLinks) {
-          adminLinks.classList.add('hidden');
-          adminLinks.classList.remove('grid');
-        }
-      }
-      
       // 退出登录按钮：所有登录用户都可见
       if (isLoggedIn && logoutLink) {
         console.log('🚪 显示退出登录按钮');

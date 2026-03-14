@@ -879,8 +879,8 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
             approval_record = data_manager.create_pending_approval(visitor_info)
             approval_id = approval_record['approval_id']
             
-            # 发送飞书通知
-            data_manager.send_feishu_approval(visitor_info, approval_id)
+            # TODO: 发送飞书通知（需要实现 send_feishu_approval 方法）
+            # data_manager.send_feishu_approval(visitor_info, approval_id)
             
             visitor_info['status'] = 'pending'
             data_manager.log_audit(visitor_info)
