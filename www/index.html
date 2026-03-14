@@ -1013,27 +1013,39 @@
       let isAdmin = false;
       let isLoggedIn = false;
       
+      console.log('🍪 Cookies:', document.cookie);
+      
       for (let cookie of cookies) {
-        const [name] = cookie.trim().split('=');
-        if (name === 'wv_admin_session') {
+        const parts = cookie.trim().split('=');
+        const name = parts[0];
+        const value = parts[1];
+        console.log('  - Cookie:', name, '=', value ? value.substring(0, 20) + '...' : '');
+        
+        if (name === 'wv_admin_session' && value) {
           isAdmin = true;
           isLoggedIn = true;
+          console.log('✅ 检测到管理员会话');
           break;
         }
-        if (name === 'wv_guest_session') {
+        if (name === 'wv_guest_session' && value) {
           isLoggedIn = true;
+          console.log('✅ 检测到访客会话');
           break;
         }
       }
+      
+      console.log('📊 状态：isAdmin =', isAdmin, ', isLoggedIn =', isLoggedIn);
       
       // 根据登录状态显示对应功能
       const auditLink = document.getElementById('auditLink');
       const pendingLink = document.getElementById('pendingLink');
       const logoutLink = document.getElementById('logoutLink');
       const adminLinks = document.getElementById('adminLinks');
+      const commonLinks = document.getElementById('commonLinks');
       
       if (isAdmin) {
         // 管理员模式：显示审计、待审批
+        console.log('🔐 管理员模式：显示审计、待审批');
         if (auditLink) auditLink.classList.remove('hidden');
         if (pendingLink) pendingLink.classList.remove('hidden');
         if (adminLinks) {
@@ -1042,6 +1054,7 @@
         }
       } else {
         // 访客模式：隐藏管理员功能
+        console.log('👤 访客模式：隐藏管理员功能');
         if (adminLinks) {
           adminLinks.classList.add('hidden');
           adminLinks.classList.remove('grid');
@@ -1050,12 +1063,18 @@
       
       // 退出登录按钮：所有登录用户都可见
       if (isLoggedIn && logoutLink) {
+        console.log('🚪 显示退出登录按钮');
         logoutLink.classList.remove('hidden');
-        // 将 commonLinks 改为 3 列（确保退出登录显示）
-        const commonLinks = document.getElementById('commonLinks');
-        if (commonLinks) {
-          commonLinks.classList.remove('grid-cols-3');
-          commonLinks.classList.add('grid-cols-3');
+        logoutLink.style.display = 'flex';
+      }
+      
+      // 确保 commonLinks 布局正确
+      if (commonLinks) {
+        commonLinks.classList.remove('grid-cols-2', 'grid-cols-3');
+        if (isLoggedIn) {
+          commonLinks.classList.add('grid-cols-3'); // 登录用户 3 个按钮
+        } else {
+          commonLinks.classList.add('grid-cols-2'); // 未登录 2 个按钮
         }
       }
     }
