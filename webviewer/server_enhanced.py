@@ -1611,15 +1611,10 @@ setTimeout(() => { window.location.href = '/login'; }, 500);
                     document.querySelector('p').innerHTML = '<span class="success">正在跳转到工具箱...</span>';
                     document.querySelector('.spinner').style.display = 'none';
                     
-                    // 等待 Cookie 生效后跳转（延迟 5 秒确保 Cookie 生效）
+                    // 延迟跳转确保 Cookie 生效
                     setTimeout(() => {{
-                        // 先访问一个简单页面测试 Cookie 是否生效
-                        fetch('/www/', {{method: 'HEAD', credentials: 'include'}}).then(() => {{
-                            window.location.href = '/www/';
-                        }}).catch(() => {{
-                            window.location.href = '/www/';
-                        }});
-                    }}, 5000);
+                        window.location.replace('/www/');
+                    }}, 2000);
                 }} else if (data.status === 'rejected') {{
                     document.querySelector('.icon').textContent = '❌';
                     document.querySelector('h1').textContent = '访问已拒绝';
@@ -2132,16 +2127,20 @@ setTimeout(() => { window.location.href = '/login'; }, 500);
             
             rows += f'''
             <tr>
-                <td><code style="background:#f3f4f6;padding:2px 6px;border-radius:4px;font-size:12px;">{approval_id[:12]}...</code></td>
-                <td>{time_str}</td>
-                <td>{guest_name}</td>
-                <td>{guest_contact}</td>
-                <td>{guest_reason}</td>
-                <td>{visitor.get('ip', 'Unknown')}</td>
-                <td style="{status_style}">{status_text}</td>
                 <td>
-                    {f'<a href="/approve/{approval_id}" style="color:#10b981;text-decoration:none;">✅ 同意</a>' if status == 'pending' else '-'}
-                    {f'<a href="/reject/{approval_id}" style="color:#ef4444;margin-left:10px;text-decoration:none;">❌ 拒绝</a>' if status == 'pending' else ''}
+                    <code onclick="navigator.clipboard.writeText('{approval_id}');alert('已复制：{approval_id}')" 
+                          style="background:#f3f4f6;padding:4px 8px;border-radius:4px;font-size:11px;cursor:pointer;" 
+                          title="点击复制完整 ID">{approval_id[:16]}...</code>
+                </td>
+                <td>{time_str}</td>
+                <td>{guest_name if guest_name else '-'}</td>
+                <td>{guest_contact if guest_contact else '-'}</td>
+                <td>{guest_reason if guest_reason else '-'}</td>
+                <td>{visitor.get('ip', 'Unknown')}</td>
+                <td style="{status_style};font-weight:600;">{status_text}</td>
+                <td>
+                    {f'<a href="/approve/{approval_id}" style="color:#10b981;text-decoration:none;font-weight:600;">✅ 同意</a>' if status == 'pending' else '<span style="color:#9ca3af;">-</span>'}
+                    {f'<a href="/reject/{approval_id}" style="color:#ef4444;margin-left:10px;text-decoration:none;font-weight:600;">❌ 拒绝</a>' if status == 'pending' else ''}
                 </td>
             </tr>
             '''
