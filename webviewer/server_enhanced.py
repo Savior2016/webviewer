@@ -721,6 +721,17 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
                 self.end_headers()
             return
         elif self.path.startswith('/www/') or self.path.startswith('/bydesign/') or self.path.startswith('/cherry-pick/') or self.path.startswith('/momhand/') or self.path.startswith('/siri-dream/') or self.path.startswith('/reports/') or self.path == '/transitions.css' or self.path.startswith('/js/'):
+            # API 路由处理（优先于静态文件）
+            if self.path.startswith('/momhand/api/'):
+                self.handle_momhand_api()
+                return
+            elif self.path.startswith('/bydesign/api/'):
+                self.handle_bydesign_api()
+                return
+            elif self.path.startswith('/cherry-pick/api/'):
+                self.handle_cherry_pick_api()
+                return
+            
             # 工具箱相关路径，检查管理员会话或访客会话
             # 优先检查管理员会话
             if self.check_admin_auth()[0]:
@@ -740,7 +751,12 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
             
             # 已授权，提供静态文件
             import os
-            rel_path = self.path
+            from urllib.parse import urlparse
+            
+            # 去除查询参数
+            parsed_path = urlparse(self.path)
+            rel_path = parsed_path.path
+            
             # 处理 /www/ 前缀
             if rel_path.startswith('/www/'):
                 rel_path = rel_path[5:]
@@ -811,6 +827,18 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
     
     def do_POST(self):
         """处理 POST 请求"""
+        # 工具箱 API 路由（优先处理）
+        if self.path.startswith('/momhand/api/'):
+            self.handle_momhand_api()
+            return
+        elif self.path.startswith('/bydesign/api/'):
+            self.handle_bydesign_api()
+            return
+        elif self.path.startswith('/cherry-pick/api/'):
+            self.handle_cherry_pick_api()
+            return
+        
+        # 其他 API 路由
         if self.path == '/api/login':
             self.handle_login()
             return
@@ -833,13 +861,37 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
         self.send_response(404)
         self.end_headers()
     
-    def do_GET(self):
-        """处理 GET 请求"""
-        # ...existing code...
-        elif self.path.startswith('/api/message-result'):
-            self.handle_message_result()
+    def do_PUT(self):
+        """处理 PUT 请求"""
+        # 工具箱 API 路由
+        if self.path.startswith('/momhand/api/'):
+            self.handle_momhand_api()
             return
-        # ...existing code...
+        elif self.path.startswith('/bydesign/api/'):
+            self.handle_bydesign_api()
+            return
+        elif self.path.startswith('/cherry-pick/api/'):
+            self.handle_cherry_pick_api()
+            return
+        
+        self.send_response(404)
+        self.end_headers()
+    
+    def do_DELETE(self):
+        """处理 DELETE 请求"""
+        # 工具箱 API 路由
+        if self.path.startswith('/momhand/api/'):
+            self.handle_momhand_api()
+            return
+        elif self.path.startswith('/bydesign/api/'):
+            self.handle_bydesign_api()
+            return
+        elif self.path.startswith('/cherry-pick/api/'):
+            self.handle_cherry_pick_api()
+            return
+        
+        self.send_response(404)
+        self.end_headers()
     
     def handle_check_status(self):
         """处理访客等待审批状态检查"""
@@ -886,30 +938,77 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
             self.send_json({'error': 'Approval not found'}, 404)
     
     def handle_send_message(self):
-        """处理发送消息请求"""
+        """处理发送消息请求 - 通过 OpenClaw Agent (dummy)"""
         try:
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length)
             data = json.loads(body)
             message = data.get('message', '')
+            module = data.get('module', 'siri_dream')  # 默认模块
             
             if not message:
                 self.send_json({'success': False, 'error': '消息内容为空'}, 400)
                 return
             
-            # 使用消息处理引擎
+            # 使用 OpenClaw Agent 处理（通过 dummy agent）
             import sys
             sys.path.insert(0, '/root/.openclaw/workspace')
-            from message_engine import MessageProcessor
+            from openclaw_agent_processor import process_via_openclaw_agent
             
-            processor = MessageProcessor()
-            processor.load_managers()
+            # 调用 dummy agent 处理消息
+            result = process_via_openclaw_agent(message, module)
             
-            # 解析意图
-            project, action, params = processor.parse_intent(message)
+            # 如果 AI 识别出项目并返回了数据，自动执行保存操作
+            project = result.get('project')
+            action = result.get('action')
+            ai_data = result.get('data', {})
             
-            # 处理消息
-            success, result_message = processor.process(project, action, params)
+            if project and ai_data:
+                # 根据项目自动保存数据
+                if project == 'momhand' and ai_data.get('item') and ai_data.get('location'):
+                    # 自动保存到 momhand
+                    sys.path.insert(0, "/root/.openclaw/workspace/momhand/skills")
+                    from item_manager import manager
+                    item = {
+                        'name': ai_data.get('item'),
+                        'type': ai_data.get('type', '其他'),
+                        'location': ai_data.get('location'),
+                        'usage': ai_data.get('usage', f"用户记录：{message}")
+                    }
+                    saved_item = manager.add_item(item)
+                    result['saved'] = True
+                    result['saved_item'] = saved_item
+                    result['message'] = f"✅ 已记录：{item['name']} 放在 {item['location']}"
+                
+                elif project == 'bydesign' and action == 'create_trip':
+                    # 自动保存到 bydesign
+                    sys.path.insert(0, '/root/.openclaw/workspace')
+                    from bydesign_manager import manager as bydesign_mgr
+                    trip = {
+                        'name': ai_data.get('name', f"{ai_data.get('type', '出行')}{ai_data.get('duration', '')}"),
+                        'description': f"{ai_data.get('type', '出行')} - {ai_data.get('destination', '未指定')} - {ai_data.get('duration', '')}"
+                    }
+                    saved_trip = bydesign_mgr.create_trip(trip)
+                    result['saved'] = True
+                    result['saved_trip'] = saved_trip
+                
+                elif project == 'cherry_pick' and action == 'add_item':
+                    # 自动保存到 cherry_pick
+                    sys.path.insert(0, '/root/.openclaw/workspace')
+                    from cherry_pick_manager import manager as cherry_mgr
+                    # 需要 move_id，如果没有就创建一个新的
+                    move_id = ai_data.get('move_id')
+                    if not move_id:
+                        move = cherry_mgr.create_move({'name': '默认搬家'})
+                        move_id = move.get('id')
+                    item_data = {
+                        'name': ai_data.get('item_name', ai_data.get('name', '物品')),
+                        'before_location': ai_data.get('before_location', '未指定'),
+                        'after_location': ai_data.get('location', ai_data.get('after_location', '未指定'))
+                    }
+                    saved_item = cherry_mgr.add_item(move_id, item_data)
+                    result['saved'] = True
+                    result['saved_item'] = saved_item
             
             # 生成消息 ID
             import uuid
@@ -921,25 +1020,30 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
             
             result_data = {
                 'msg_id': msg_id,
-                'project': project,
-                'action': action,
-                'success': success,
-                'result': result_message,
-                'timestamp': time.time()
+                'timestamp': time.time(),
+                **result  # 合并 agent 返回的结果
             }
             
             result_file = result_dir / f'{msg_id}.json'
             with open(result_file, 'w', encoding='utf-8') as f:
                 json.dump(result_data, f, ensure_ascii=False, indent=2)
             
+            # 返回结果
             self.send_json({
-                'success': True,
+                'success': result.get('success', False),
                 'msg_id': msg_id,
                 'processing': False,
-                'result': result_message
+                'message': result.get('message', ''),
+                'project': result.get('project'),
+                'action': result.get('action'),
+                'refresh': result.get('refresh'),
+                'data': result.get('data'),
+                'saved': result.get('saved', False)
             })
             
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             self.send_json({'success': False, 'error': str(e)}, 500)
     
     def handle_message_result(self):
@@ -984,7 +1088,171 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
         except Exception as e:
             self.send_json({'success': False, 'error': str(e)}, 500)
     
+    def handle_momhand_api(self):
+        """处理 Momhand API 请求"""
+        try:
+            import sys
+            sys.path.insert(0, "/root/.openclaw/workspace/momhand/skills")
+            from item_manager import manager
+            
+            from urllib.parse import parse_qs, urlparse
+            parsed = urlparse(self.path)
+            path = parsed.path
+            query = parse_qs(parsed.query)
+            
+            if path == '/momhand/api/items':
+                if self.command == 'GET':
+                    items = manager.get_all_items()
+                    self.send_json({'success': True, 'data': items})
+                elif self.command == 'POST':
+                    content_length = int(self.headers.get('Content-Length', 0))
+                    body = self.rfile.read(content_length)
+                    data = json.loads(body)
+                    item = manager.add_item(data)
+                    self.send_json({'success': True, 'data': item})
+                else:
+                    self.send_json({'success': False, 'error': 'Method not allowed'}, 405)
+            
+            elif path == '/momhand/api/stats':
+                stats = manager.get_statistics()
+                self.send_json({'success': True, 'data': stats})
+            
+            elif path == '/momhand/api/search':
+                keyword = query.get('q', [''])[0]
+                items = manager.search_items(keyword)
+                self.send_json({'success': True, 'data': items})
+            
+            elif path.startswith('/momhand/api/items/'):
+                item_id = int(path.split('/')[-1])
+                if self.command == 'GET':
+                    item = manager.get_item_by_id(item_id)
+                    self.send_json({'success': True, 'data': item} if item else {'success': False, 'error': 'Not found'}, 404)
+                elif self.command == 'PUT':
+                    content_length = int(self.headers.get('Content-Length', 0))
+                    body = self.rfile.read(content_length)
+                    data = json.loads(body)
+                    item = manager.update_item(item_id, data)
+                    self.send_json({'success': True, 'data': item} if item else {'success': False, 'error': 'Not found'}, 404)
+                elif self.command == 'DELETE':
+                    manager.delete_item(item_id)
+                    self.send_json({'success': True})
+                else:
+                    self.send_json({'success': False, 'error': 'Method not allowed'}, 405)
+            
+            else:
+                self.send_json({'success': False, 'error': 'Unknown API'}, 404)
+                
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            self.send_json({'success': False, 'error': str(e)}, 500)
+    
+    def handle_bydesign_api(self):
+        """处理 By Design API 请求"""
+        try:
+            import sys
+            sys.path.insert(0, '/root/.openclaw/workspace')
+            from bydesign_manager import manager
+            
+            from urllib.parse import parse_qs, urlparse
+            parsed = urlparse(self.path)
+            path = parsed.path
+            query = parse_qs(parsed.query)
+            
+            if path == '/bydesign/api/trips':
+                if self.command == 'GET':
+                    trips = manager.get_all_trips()
+                    self.send_json({'success': True, 'data': trips})
+                elif self.command == 'POST':
+                    content_length = int(self.headers.get('Content-Length', 0))
+                    body = self.rfile.read(content_length)
+                    data = json.loads(body)
+                    trip = manager.create_trip(data)
+                    self.send_json({'success': True, 'data': trip})
+                else:
+                    self.send_json({'success': False, 'error': 'Method not allowed'}, 405)
+            
+            elif path == '/bydesign/api/checklist':
+                if self.command == 'GET':
+                    items = manager.get_checklist()
+                    self.send_json({'success': True, 'data': items})
+                elif self.command == 'POST':
+                    content_length = int(self.headers.get('Content-Length', 0))
+                    body = self.rfile.read(content_length)
+                    data = json.loads(body)
+                    item = manager.add_checklist_item(data)
+                    self.send_json({'success': True, 'data': item})
+                else:
+                    self.send_json({'success': False, 'error': 'Method not allowed'}, 405)
+            
+            else:
+                self.send_json({'success': False, 'error': 'Unknown API'}, 404)
+                
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            self.send_json({'success': False, 'error': str(e)}, 500)
+    
+    def handle_cherry_pick_api(self):
+        """处理 Cherry Pick API 请求"""
+        try:
+            import sys
+            sys.path.insert(0, '/root/.openclaw/workspace')
+            from cherry_pick_manager import manager
+            
+            from urllib.parse import parse_qs, urlparse
+            parsed = urlparse(self.path)
+            path = parsed.path
+            query = parse_qs(parsed.query)
+            
+            if path == '/cherry-pick/api/moves':
+                if self.command == 'GET':
+                    moves = manager.get_all_moves()
+                    self.send_json({'success': True, 'data': moves})
+                elif self.command == 'POST':
+                    content_length = int(self.headers.get('Content-Length', 0))
+                    body = self.rfile.read(content_length)
+                    data = json.loads(body)
+                    move = manager.create_move(data)
+                    self.send_json({'success': True, 'data': move})
+                else:
+                    self.send_json({'success': False, 'error': 'Method not allowed'}, 405)
+            
+            elif path.startswith('/cherry-pick/api/moves/'):
+                parts = path.split('/')
+                move_id = int(parts[4])
+                
+                if len(parts) > 5 and parts[5] == 'items':
+                    if self.command == 'GET':
+                        items = manager.get_items_by_move(move_id)
+                        self.send_json({'success': True, 'data': items})
+                    elif self.command == 'POST':
+                        content_length = int(self.headers.get('Content-Length', 0))
+                        body = self.rfile.read(content_length)
+                        data = json.loads(body)
+                        item = manager.add_item(move_id, data)
+                        self.send_json({'success': True, 'data': item})
+                    else:
+                        self.send_json({'success': False, 'error': 'Method not allowed'}, 405)
+                else:
+                    if self.command == 'GET':
+                        move = manager.get_move_by_id(move_id)
+                        self.send_json({'success': True, 'data': move} if move else {'success': False, 'error': 'Not found'}, 404)
+                    else:
+                        self.send_json({'success': False, 'error': 'Method not allowed'}, 405)
+            
+            else:
+                self.send_json({'success': False, 'error': 'Unknown API'}, 404)
+                
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            self.send_json({'success': False, 'error': str(e)}, 500)
+    
     def handle_guest_request(self):
+        """处理访客请求（已移除，不再发送飞书通知）"""
+        # 此方法已废弃，访客请求直接在 do_GET 中处理
+        self.send_json({'success': False, 'error': 'Method deprecated'})
     
     def handle_login(self):
         """处理登录请求"""

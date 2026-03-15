@@ -35,8 +35,12 @@ class ItemManager:
     
     def add_item(self, item_data):
         """添加物品"""
+        # 生成唯一 ID
+        import uuid
+        item_id = str(uuid.uuid4())
+        
         item = {
-            "id": len(self.items) + 1,
+            "id": item_id,
             "name": item_data.get("name", "未知"),
             "type": item_data.get("type", "其他"),
             "photo": item_data.get("photo", None),
@@ -52,6 +56,14 @@ class ItemManager:
         self.items.append(item)
         self._save_items()
         return item
+    
+    def get_item_by_id(self, item_id):
+        """根据 ID 获取物品"""
+        # 支持字符串 UUID 和整数 ID
+        for item in self.items:
+            if str(item.get("id")) == str(item_id):
+                return item
+        return None
     
     def search_items(self, keyword):
         """搜索物品"""
@@ -76,6 +88,34 @@ class ItemManager:
         for item in self.items:
             if item["id"] == item_id:
                 item["location"] = new_location
+                item["updated_at"] = datetime.now().isoformat()
+                self._save_items()
+                return item
+        return None
+    
+    def update_item(self, item_id, item_data):
+        """更新物品信息"""
+        for item in self.items:
+            if item["id"] == item_id:
+                # 更新字段
+                if "name" in item_data:
+                    item["name"] = item_data["name"]
+                if "type" in item_data:
+                    item["type"] = item_data["type"]
+                if "location" in item_data:
+                    item["location"] = item_data["location"]
+                if "usage" in item_data:
+                    item["usage"] = item_data["usage"]
+                if "photo" in item_data:
+                    item["photo"] = item_data["photo"]
+                if "purchase_date" in item_data:
+                    item["purchase_date"] = item_data["purchase_date"]
+                if "price" in item_data:
+                    item["price"] = item_data["price"]
+                if "production_date" in item_data:
+                    item["production_date"] = item_data["production_date"]
+                if "expiry_date" in item_data:
+                    item["expiry_date"] = item_data["expiry_date"]
                 item["updated_at"] = datetime.now().isoformat()
                 self._save_items()
                 return item
@@ -150,8 +190,9 @@ class ItemManager:
         by_type = {}
         by_location = {}
         for item in self.items:
-            t = item["type"]
-            l = item["location"]
+            # 兼容 type 和 category 字段
+            t = item.get("type") or item.get("category") or "未知"
+            l = item.get("location") or "未指定"
             by_type[t] = by_type.get(t, 0) + 1
             by_location[l] = by_location.get(l, 0) + 1
         return {
