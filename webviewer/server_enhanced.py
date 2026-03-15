@@ -939,8 +939,62 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
                         try:
                             update_message_status(msg['id'], 'processing')
                             result = process_via_openclaw_agent(text)
+                            
+                            # 如果 AI 识别出项目并返回了数据，自动执行保存操作（与 handle_send_message 一致）
+                            project = result.get('project')
+                            action = result.get('action')
+                            ai_data = result.get('data', {})
+                            
+                            if project and ai_data:
+                                # 根据项目自动保存数据
+                                if project == 'momhand' and ai_data.get('item') and ai_data.get('location'):
+                                    # 自动保存到 momhand
+                                    sys.path.insert(0, "/root/.openclaw/workspace/momhand/skills")
+                                    from item_manager import manager
+                                    item = {
+                                        'name': ai_data.get('item'),
+                                        'type': ai_data.get('type', '其他'),
+                                        'location': ai_data.get('location'),
+                                        'usage': ai_data.get('usage', f"用户记录：{text}")
+                                    }
+                                    saved_item = manager.add_item(item)
+                                    result['saved'] = True
+                                    result['saved_item'] = saved_item
+                                    result['message'] = f"✅ 已记录：{item['name']} 放在 {item['location']}"
+                                
+                                elif project == 'bydesign' and action == 'create_trip':
+                                    # 自动保存到 bydesign
+                                    sys.path.insert(0, '/root/.openclaw/workspace')
+                                    from bydesign_manager import manager as bydesign_mgr
+                                    trip = {
+                                        'name': ai_data.get('name', f"{ai_data.get('type', '出行')}{ai_data.get('duration', '')}"),
+                                        'description': f"{ai_data.get('type', '出行')} - {ai_data.get('destination', '未指定')} - {ai_data.get('duration', '')}"
+                                    }
+                                    saved_trip = bydesign_mgr.create_trip(trip)
+                                    result['saved'] = True
+                                    result['saved_trip'] = saved_trip
+                                
+                                elif project == 'cherry_pick' and action == 'add_item':
+                                    # 自动保存到 cherry_pick
+                                    sys.path.insert(0, '/root/.openclaw/workspace')
+                                    from cherry_pick_manager import manager as cherry_mgr
+                                    move_id = ai_data.get('move_id')
+                                    if not move_id:
+                                        move = cherry_mgr.create_move({'name': '默认搬家'})
+                                        move_id = move.get('id')
+                                    item_data = {
+                                        'name': ai_data.get('item_name', ai_data.get('name', '物品')),
+                                        'before_location': ai_data.get('before_location', '未指定'),
+                                        'after_location': ai_data.get('location', ai_data.get('after_location', '未指定'))
+                                    }
+                                    saved_item = cherry_mgr.add_item(move_id, item_data)
+                                    result['saved'] = True
+                                    result['saved_item'] = saved_item
+                            
                             update_message_status(msg['id'], 'completed', result)
                         except Exception as e:
+                            import traceback
+                            traceback.print_exc()
                             update_message_status(msg['id'], 'failed', {'error': str(e)})
                     
                     thread = threading.Thread(target=process_message)
