@@ -904,8 +904,8 @@
             const formattedResult = formatResult(result.message || '处理完成');
             addMessage(formattedResult, false);
             
-            // 如果需要刷新页面
-            if (result.refresh) {
+            // 如果需要刷新页面（仅当 result.refresh 存在且不是搜索操作）
+            if (result.refresh && result.refresh !== null) {
               addMessage(`即将跳转到 ${result.refresh}...`, false);
               setTimeout(() => {
                 window.location.href = result.refresh + '?t=' + Date.now();
