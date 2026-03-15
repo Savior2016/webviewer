@@ -904,8 +904,8 @@
             const formattedResult = formatResult(result.message || '处理完成');
             addMessage(formattedResult, false);
             
-            // 如果需要刷新页面（仅当 result.refresh 存在且不是搜索操作）
-            if (result.refresh && result.refresh !== null) {
+            // 如果需要刷新页面（仅当 result.refresh 是有效的非空字符串）
+            if (result.refresh && typeof result.refresh === 'string' && result.refresh.trim() !== '' && result.refresh !== 'null') {
               addMessage(`即将跳转到 ${result.refresh}...`, false);
               setTimeout(() => {
                 window.location.href = result.refresh + '?t=' + Date.now();
@@ -939,7 +939,8 @@
               const formattedResult = formatResult(result.data.message || '处理完成');
               addMessage(formattedResult, false);
               
-              if (result.data.refresh) {
+              // 仅当 refresh 是有效的非空字符串时才跳转
+              if (result.data.refresh && typeof result.data.refresh === 'string' && result.data.refresh.trim() !== '' && result.data.refresh !== 'null') {
                 addMessage(`即将跳转到 ${result.data.refresh}...`, false);
                 setTimeout(() => {
                   window.location.href = result.data.refresh + '?t=' + Date.now();
