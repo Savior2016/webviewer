@@ -97,6 +97,12 @@ def get_message(message_id):
     return None
 
 
+def process_via_openclaw_agent(message: str, module: str = 'siri_dream') -> dict:
+    """通过 OpenClaw Agent 处理消息"""
+    from openclaw_agent_processor import process_via_openclaw_agent as agent_process
+    return agent_process(message, module)
+
+
 def delete_message(message_id):
     """删除消息"""
     messages = load_messages()

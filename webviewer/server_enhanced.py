@@ -722,7 +722,10 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
             return
         elif self.path.startswith('/www/') or self.path.startswith('/bydesign/') or self.path.startswith('/cherry-pick/') or self.path.startswith('/momhand/') or self.path.startswith('/siri-dream/') or self.path.startswith('/reports/') or self.path == '/transitions.css' or self.path.startswith('/js/'):
             # API 路由处理（优先于静态文件）
-            if self.path.startswith('/momhand/api/'):
+            if self.path.startswith('/siri-dream/api/'):
+                self.handle_siri_dream_api()
+                return
+            elif self.path.startswith('/momhand/api/'):
                 self.handle_momhand_api()
                 return
             elif self.path.startswith('/bydesign/api/'):
@@ -827,8 +830,11 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
     
     def do_POST(self):
         """处理 POST 请求"""
-        # 工具箱 API 路由（优先处理）
-        if self.path.startswith('/momhand/api/'):
+        # API 路由（优先处理）
+        if self.path.startswith('/siri-dream/api/'):
+            self.handle_siri_dream_api()
+            return
+        elif self.path.startswith('/momhand/api/'):
             self.handle_momhand_api()
             return
         elif self.path.startswith('/bydesign/api/'):
@@ -863,8 +869,11 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
     
     def do_PUT(self):
         """处理 PUT 请求"""
-        # 工具箱 API 路由
-        if self.path.startswith('/momhand/api/'):
+        # API 路由
+        if self.path.startswith('/siri-dream/api/'):
+            self.handle_siri_dream_api()
+            return
+        elif self.path.startswith('/momhand/api/'):
             self.handle_momhand_api()
             return
         elif self.path.startswith('/bydesign/api/'):
@@ -879,8 +888,11 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
     
     def do_DELETE(self):
         """处理 DELETE 请求"""
-        # 工具箱 API 路由
-        if self.path.startswith('/momhand/api/'):
+        # API 路由
+        if self.path.startswith('/siri-dream/api/'):
+            self.handle_siri_dream_api()
+            return
+        elif self.path.startswith('/momhand/api/'):
             self.handle_momhand_api()
             return
         elif self.path.startswith('/bydesign/api/'):
@@ -892,6 +904,87 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
         
         self.send_response(404)
         self.end_headers()
+    
+    def handle_siri_dream_api(self):
+        """处理 Siri Dream API 请求"""
+        try:
+            import sys
+            sys.path.insert(0, '/root/.openclaw/workspace')
+            from siri_dream_manager import add_message, get_messages, get_message, delete_message, update_message_status, process_via_openclaw_agent
+            
+            from urllib.parse import parse_qs, urlparse
+            parsed = urlparse(self.path)
+            path = parsed.path
+            query = parse_qs(parsed.query)
+            
+            if path == '/siri-dream/api/message':
+                if self.command == 'POST':
+                    content_length = int(self.headers.get('Content-Length', 0))
+                    body = self.rfile.read(content_length)
+                    data = json.loads(body)
+                    text = data.get('text', '')
+                    metadata = data.get('metadata', {})
+                    source = data.get('source', 'web')
+                    
+                    if not text:
+                        self.send_json({'success': False, 'error': '消息内容为空'}, 400)
+                        return
+                    
+                    # 添加消息
+                    msg = add_message(text, source, metadata)
+                    
+                    # 异步处理消息（在后台线程中）
+                    import threading
+                    def process_message():
+                        try:
+                            update_message_status(msg['id'], 'processing')
+                            result = process_via_openclaw_agent(text)
+                            update_message_status(msg['id'], 'completed', result)
+                        except Exception as e:
+                            update_message_status(msg['id'], 'failed', {'error': str(e)})
+                    
+                    thread = threading.Thread(target=process_message)
+                    thread.daemon = True
+                    thread.start()
+                    
+                    self.send_json({
+                        'success': True,
+                        'message_id': msg['id'],
+                        'status': 'pending'
+                    })
+                else:
+                    self.send_json({'success': False, 'error': 'Method not allowed'}, 405)
+            
+            elif path == '/siri-dream/api/messages':
+                if self.command == 'GET':
+                    limit = int(query.get('limit', [50])[0])
+                    offset = int(query.get('offset', [0])[0])
+                    messages = get_messages(limit, offset)
+                    self.send_json({'success': True, 'data': messages})
+                else:
+                    self.send_json({'success': False, 'error': 'Method not allowed'}, 405)
+            
+            elif path.startswith('/siri-dream/api/messages/'):
+                message_id = path.split('/')[-1]
+                if self.command == 'GET':
+                    msg = get_message(message_id)
+                    if msg:
+                        self.send_json({'success': True, 'data': msg})
+                    else:
+                        self.send_json({'success': False, 'error': 'Not found'}, 404)
+                elif self.command == 'DELETE':
+                    delete_message(message_id)
+                    self.send_json({'success': True})
+                else:
+                    self.send_json({'success': False, 'error': 'Method not allowed'}, 405)
+            
+            else:
+                self.send_json({'success': False, 'error': 'Unknown API'}, 404)
+                
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            self.send_json({'success': False, 'error': str(e)}, 500)
     
     def handle_check_status(self):
         """处理访客等待审批状态检查"""
