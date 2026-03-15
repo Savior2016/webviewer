@@ -887,7 +887,7 @@
         const response = await fetch('/api/send-message', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message, timestamp: Date.now() })
+          body: JSON.stringify({ message, module: 'siri_dream', timestamp: Date.now() })
         });
         
         const result = await response.json();
