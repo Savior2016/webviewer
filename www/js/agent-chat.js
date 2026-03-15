@@ -378,11 +378,20 @@
     // 显示流式进展
     showStreamProgress();
 
+    // 获取当前模块名（用于选择对应的系统提示词）
+    const project = window.chatConfig?.project || 'bydesign';
+    const moduleMap = {
+      'bydesign': 'bydesign',
+      'cherry_pick': 'cherry_pick',
+      'momhand': 'momhand'
+    };
+    const module = moduleMap[project] || 'siri_dream';
+
     try {
       const response = await fetch('/api/send-message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message, timestamp: Date.now() })
+        body: JSON.stringify({ message, module, timestamp: Date.now() })
       });
       const result = await response.json();
 

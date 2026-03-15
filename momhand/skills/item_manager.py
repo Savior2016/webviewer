@@ -58,7 +58,7 @@ class ItemManager:
         results = []
         for item in self.items:
             if (keyword.lower() in item["name"].lower() or
-                keyword.lower() in item["type"].lower() or
+                keyword.lower() in item.get("type", "其他").lower() or
                 keyword.lower() in item.get("usage", "").lower()):
                 results.append(item)
         return results

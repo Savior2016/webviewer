@@ -17,26 +17,30 @@ class MessageProcessor:
     def load_managers(self):
         """加载各个项目的管理器"""
         import sys
-        sys.path.insert(0, "/root/.openclaw/workspace/webviewer")
+        # 添加 workspace 根目录到路径，以便导入管理器模块
+        sys.path.insert(0, "/root/.openclaw/workspace")
         
         try:
             from bydesign_manager import manager as bydesign_mgr
             self.bydesign_manager = bydesign_mgr
+            print(f"✅ By Design 管理器加载成功")
         except Exception as e:
-            print(f"加载 By Design 管理器失败：{e}")
+            print(f"❌ 加载 By Design 管理器失败：{e}")
         
         try:
             from cherry_pick_manager import manager as cherry_mgr
             self.cherry_pick_manager = cherry_mgr
+            print(f"✅ Cherry Pick 管理器加载成功")
         except Exception as e:
-            print(f"加载 Cherry Pick 管理器失败：{e}")
+            print(f"❌ 加载 Cherry Pick 管理器失败：{e}")
         
         try:
             sys.path.insert(0, "/root/.openclaw/workspace/momhand/skills")
             from item_manager import manager as momhand_mgr
             self.momhand_manager = momhand_mgr
+            print(f"✅ Momhand 管理器加载成功")
         except Exception as e:
-            print(f"加载 Momhand 管理器失败：{e}")
+            print(f"❌ 加载 Momhand 管理器失败：{e}")
     
     def parse_intent(self, message):
         """
@@ -48,18 +52,29 @@ class MessageProcessor:
         
         # 1. By Design - 出行相关
         if any(kw in message for kw in ['出差', '旅行', '出行', '旅游', '出门', '远门']):
-            if '创建' in message or '清单' in message or '帮我' in message or '记' in message:
-                # 提取出行名称
-                match = re.search(r'出差 (\d+) 天', message)
-                days = match.group(1) if match else '3'
-                
-                match = re.search(r'(?:去 | 到 | 出差 | 旅行)([\u4e00-\u9fa5]+)', message)
-                destination = match.group(1) if match else '出差'
-                
-                return ('bydesign', 'create_trip', {
-                    'name': f'{destination}{days}天',
-                    'days': days
-                })
+            # 匹配"出差 X 天"或"旅行 X 天"格式（支持"去北京旅行 5 天"）
+            match = re.search(r'(\d+)\s*天', message)
+            days = match.group(1) if match else '3'
+            
+            # 尝试提取目的地（优先匹配"去 XX"或"到 XX"）
+            dest_match = re.search(r'(?:去 | 到)([\u4e00-\u9fa5]+)', message)
+            if dest_match:
+                destination = dest_match.group(1)
+            else:
+                # 如果没有明确目的地，使用出行类型
+                if '出差' in message:
+                    destination = '出差'
+                elif '旅行' in message:
+                    destination = '旅行'
+                elif '旅游' in message:
+                    destination = '旅游'
+                else:
+                    destination = '出行'
+            
+            return ('bydesign', 'create_trip', {
+                'name': f'{destination}{days}天',
+                'days': days
+            })
         
         # 2. Cherry Pick - 搬家相关
         if any(kw in message for kw in ['搬家', '打包', '物品记录', '新位置', '原位置']):
@@ -92,8 +107,8 @@ class MessageProcessor:
         if any(kw in message for kw in ['找', '查询', '在哪里', '放哪']):
             if '找' in message or '哪里' in message or '哪' in message:
                 # 搜索物品
-                match = re.search(r'找 [一下 ]?(\S+)', message)
-                keyword = match.group(1) if match else message
+                match = re.search(r'找 (?:一下)?(.+)', message) or re.search(r'找一下(.+)', message)
+                keyword = match.group(1).strip() if match else message
                 
                 return ('momhand', 'search_item', {
                     'keyword': keyword
@@ -251,21 +266,26 @@ class MessageProcessor:
             if not self.momhand_manager:
                 return (False, "Momhand 服务暂时不可用")
             
-            items = self.momhand_manager.search_items(params['keyword'])
-            
-            if not items:
-                return (False, f'😕 没有找到与 "{params["keyword"]}" 相关的物品\n\n试试搜索其他关键词？')
-            
-            result = f"🔍 找到 {len(items)} 个相关物品：\n\n"
-            for item in items[:5]:
-                result += f"📦 {item['name']}\n"
-                result += f"   📍 位置：{item.get('location', '未知')}\n"
-                if item.get('usage'):
-                    result += f"   💡 用途：{item['usage']}\n"
-                result += "\n"
-            
-            if len(items) > 5:
-                result += f"... 还有 {len(items) - 5} 个物品\n"
+            try:
+                items = self.momhand_manager.search_items(params['keyword'])
+                
+                if not items:
+                    return (False, f'未找到与 "{params["keyword"]}" 相关的物品')
+                
+                result = f"找到 {len(items)} 个相关物品：\n\n"
+                for item in items[:5]:
+                    result += f"物品：{item.get('name', '未知')}\n"
+                    result += f"位置：{item.get('location', '未知')}\n"
+                    if item.get('usage'):
+                        result += f"用途：{item['usage']}\n"
+                    result += "\n"
+                
+                if len(items) > 5:
+                    result += f"... 还有 {len(items) - 5} 个物品"
+                
+                return (True, result)
+            except Exception as e:
+                return (False, f"搜索失败：{str(e)}")
             
             result += "\n👉 访问：https://localhost/momhand/ 查看全部"
             return (True, result)

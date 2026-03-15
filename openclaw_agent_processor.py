@@ -100,28 +100,33 @@ def get_module_prompt(module: str) -> str:
 def build_full_prompt(module: str, message: str) -> str:
     """
     构建完整的提示词（模块提示词 + 用户消息）
-    
-    Args:
-        module: 模块名
-        message: 用户消息
-    
-    Returns:
-        完整的提示词
     """
     system_prompt = get_module_prompt(module)
     
-    # 支持两种格式：
-    # 1. 如果提示词包含 {message} 占位符，使用 format 替换
-    # 2. 否则，将用户消息附加到提示词后面
+    # JSON 格式要求
+    json_format_requirement = """
+
+**重要：必须返回以下 JSON 格式**
+```json
+{
+  "success": true,
+  "project": "bydesign|cherry_pick|momhand|null",
+  "action": "操作类型或null",
+  "message": "简洁的中文回复，不含emoji",
+  "refresh": "/页面路径/ 或 null",
+  "data": {}
+}
+```
+
+项目映射：bydesign=出行, cherry_pick=搬家, momhand=物品, null=问候"""
+
+    # 构建提示词（避免 format 的花括号问题）
     if '{message}' in system_prompt:
-        return system_prompt.format(message=message)
+        base_prompt = system_prompt.replace('{message}', message)
     else:
-        return f"""{system_prompt}
-
-用户消息：
-{message}
-
-请根据以上提示词和用户消息进行处理，返回有帮助的回复。"""
+        base_prompt = system_prompt + "\n\n用户消息：\n" + message
+    
+    return base_prompt + json_format_requirement
 
 class TimeoutError(Exception):
     pass
@@ -330,9 +335,30 @@ def extract_json_from_output(output: str) -> dict:
     except:
         pass
     
-    # 尝试 2: 查找 JSON 对象
-    json_pattern = r'\{[^{}]*"success"[^{}]*\}'
-    match = re.search(json_pattern, cleaned, re.DOTALL)
+    # 尝试 2: 查找 markdown 代码块中的 JSON（优先）
+    # 匹配 ```json ... ``` 或 ``` ... ``` 格式
+    code_block_patterns = [
+        r'```json\s*\n([\s\S]*?)\n```',  # ```json\n{...}\n```
+        r'```\s*\n([\s\S]*?)\n```',       # ```\n{...}\n```
+        r'```json\s+([\s\S]*?)\n```',     # ```json {...}\n```
+        r'```([\s\S]*?)```',              # ```{...}```
+    ]
+    
+    for pattern in code_block_patterns:
+        match = re.search(pattern, cleaned)
+        if match:
+            content = match.group(1).strip()
+            print(f"📦 找到代码块: {content[:100]}...")
+            try:
+                return json.loads(content)
+            except Exception as e:
+                print(f"⚠️  代码块解析失败：{e}")
+                continue
+    
+    # 尝试 3: 查找独立的 JSON 对象（包含 success 字段）
+    # 使用更宽松的正则，匹配完整的 JSON 对象
+    json_pattern = r'\{[\s\S]*?"success"[\s\S]*?\}'
+    match = re.search(json_pattern, cleaned)
     
     if match:
         json_str = match.group(0)
@@ -341,16 +367,6 @@ def extract_json_from_output(output: str) -> dict:
             return json.loads(json_str)
         except Exception as e:
             print(f"⚠️  解析失败：{e}")
-    
-    # 尝试 3: 查找代码块
-    code_pattern = r'```(?:json)?\s*({.*?})\s*```'
-    match = re.search(code_pattern, cleaned, re.DOTALL)
-    
-    if match:
-        try:
-            return json.loads(match.group(1))
-        except:
-            pass
     
     return None
 
