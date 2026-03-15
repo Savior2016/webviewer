@@ -1314,7 +1314,10 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
                     content_length = int(self.headers.get('Content-Length', 0))
                     body = self.rfile.read(content_length)
                     data = json.loads(body)
-                    trip = manager.create_trip(data)
+                    # 正确提取参数
+                    name = data.get('name', '未命名出行')
+                    description = data.get('description', '')
+                    trip = manager.create_trip(name, description)
                     self.send_json({'success': True, 'data': trip})
                 else:
                     self.send_json({'success': False, 'error': 'Method not allowed'}, 405)
@@ -1327,8 +1330,63 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
                     content_length = int(self.headers.get('Content-Length', 0))
                     body = self.rfile.read(content_length)
                     data = json.loads(body)
-                    item = manager.add_checklist_item(data)
-                    self.send_json({'success': True, 'data': item})
+                    # 正确提取 text 参数
+                    text = data.get('text', '')
+                    if not text:
+                        self.send_json({'success': False, 'error': 'text 参数为空'}, 400)
+                        return
+                    item = manager.add_checklist_item(text)
+                    if item:
+                        self.send_json({'success': True, 'data': item})
+                    else:
+                        self.send_json({'success': False, 'error': '该项已存在', 'duplicate': True})
+                else:
+                    self.send_json({'success': False, 'error': 'Method not allowed'}, 405)
+            
+            # 处理单个检查项的操作
+            elif path.startswith('/bydesign/api/checklist/'):
+                item_id = path.split('/')[-1]
+                if self.command == 'PUT':
+                    content_length = int(self.headers.get('Content-Length', 0))
+                    body = self.rfile.read(content_length)
+                    data = json.loads(body)
+                    item = manager.update_checklist_item(item_id, data)
+                    self.send_json({'success': True, 'data': item} if item else {'success': False, 'error': 'Not found'}, 404)
+                elif self.command == 'DELETE':
+                    manager.delete_checklist_item(item_id)
+                    self.send_json({'success': True})
+                else:
+                    self.send_json({'success': False, 'error': 'Method not allowed'}, 405)
+            
+            # 处理单个出行的操作
+            elif path.startswith('/bydesign/api/trips/'):
+                parts = path.split('/')
+                trip_id = parts[4] if len(parts) > 4 else None
+                
+                if not trip_id:
+                    self.send_json({'success': False, 'error': 'Missing trip_id'}, 400)
+                    return
+                
+                if self.command == 'GET':
+                    trip = manager.get_trip(trip_id)
+                    self.send_json({'success': True, 'data': trip} if trip else {'success': False, 'error': 'Not found'}, 404)
+                elif self.command == 'DELETE':
+                    manager.delete_trip(trip_id)
+                    self.send_json({'success': True})
+                else:
+                    self.send_json({'success': False, 'error': 'Method not allowed'}, 405)
+            
+            # 处理模板 API
+            elif path == '/bydesign/api/templates':
+                if self.command == 'GET':
+                    templates = manager.get_templates()
+                    self.send_json({'success': True, 'data': templates})
+                elif self.command == 'POST':
+                    content_length = int(self.headers.get('Content-Length', 0))
+                    body = self.rfile.read(content_length)
+                    data = json.loads(body)
+                    template = manager.create_template(data.get('name', ''), data.get('items', []))
+                    self.send_json({'success': True, 'data': template})
                 else:
                     self.send_json({'success': False, 'error': 'Method not allowed'}, 405)
             
@@ -1360,31 +1418,44 @@ class WebViewerHandler(SimpleHTTPRequestHandler):
                     content_length = int(self.headers.get('Content-Length', 0))
                     body = self.rfile.read(content_length)
                     data = json.loads(body)
-                    move = manager.create_move(data)
+                    # 正确提取参数
+                    name = data.get('name', '未命名搬家')
+                    description = data.get('description', '')
+                    move = manager.create_move(name, description)
                     self.send_json({'success': True, 'data': move})
                 else:
                     self.send_json({'success': False, 'error': 'Method not allowed'}, 405)
             
             elif path.startswith('/cherry-pick/api/moves/'):
                 parts = path.split('/')
-                move_id = int(parts[4])
+                move_id = parts[4]  # UUID 字符串，不要转换为 int
                 
                 if len(parts) > 5 and parts[5] == 'items':
                     if self.command == 'GET':
-                        items = manager.get_items_by_move(move_id)
+                        items = manager.get_items(move_id)
                         self.send_json({'success': True, 'data': items})
                     elif self.command == 'POST':
                         content_length = int(self.headers.get('Content-Length', 0))
                         body = self.rfile.read(content_length)
                         data = json.loads(body)
-                        item = manager.add_item(move_id, data)
-                        self.send_json({'success': True, 'data': item})
+                        # 正确提取参数
+                        item = manager.add_item(
+                            move_id,
+                            data.get('name', data.get('item_name', '物品')),
+                            data.get('before_location', ''),
+                            data.get('pack_location', ''),
+                            data.get('after_location', data.get('location', ''))
+                        )
+                        self.send_json({'success': True, 'data': item} if item else {'success': False, 'error': 'Move not found'}, 404)
                     else:
                         self.send_json({'success': False, 'error': 'Method not allowed'}, 405)
                 else:
                     if self.command == 'GET':
-                        move = manager.get_move_by_id(move_id)
+                        move = manager.get_move(move_id)
                         self.send_json({'success': True, 'data': move} if move else {'success': False, 'error': 'Not found'}, 404)
+                    elif self.command == 'DELETE':
+                        manager.delete_move(move_id)
+                        self.send_json({'success': True})
                     else:
                         self.send_json({'success': False, 'error': 'Method not allowed'}, 405)
             

@@ -191,7 +191,8 @@
 
     async function loadMoves() {
       const res = await fetch('/cherry-pick/api/moves');
-      const moves = await res.json();
+      const result = await res.json();
+      const moves = result.data || result || [];
       const container = document.getElementById('movesList');
       
       if (moves.length === 0) {
@@ -235,7 +236,8 @@
 
     async function loadItems(moveId) {
       const res = await fetch(`/cherry-pick/api/moves/${moveId}/items`);
-      const items = await res.json();
+      const result = await res.json();
+      const items = result.data || result || [];
       allItems = items;
       const container = document.getElementById(`items-list-${moveId}`);
 
