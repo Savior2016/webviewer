@@ -9,7 +9,103 @@
  */
 
 (function() {
-  // 默认配置
+  // ---- 共享工具函数 ----
+
+  /**
+   * HTML 转义 (防 XSS)
+   */
+  window.escapeHtml = function(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  };
+
+  /**
+   * 切换悬浮面板
+   */
+  window.togglePanel = function() {
+    const panel = document.getElementById('fabPanel');
+    const icon = document.getElementById('fabIcon');
+    if (!panel || !icon) return;
+    if (panel.classList.contains('hidden')) {
+      panel.classList.remove('hidden');
+      icon.textContent = '\u2715';
+    } else {
+      panel.classList.add('hidden');
+      icon.textContent = '\uD83D\uDCAC';
+    }
+  };
+
+  /**
+   * 各模块的默认系统提示词
+   */
+  window.DEFAULT_SYSTEM_PROMPTS = {
+    bydesign: `你是 WebViewer 的助手 Dummy，负责处理用户的出行、搬家和物品记录请求。
+
+用户消息："{message}"
+
+可用项目：
+1. 出行相关（出差、旅行、出行）→ By Design (/bydesign/)
+   - 动作：创建出行记录
+   - API: POST /bydesign/api/trips
+   - 数据：{name, description}
+
+2. 搬家相关（搬家、打包、物品记录）→ Cherry Pick (/cherry-pick/)
+   - 动作：记录物品位置
+   - API: POST /cherry-pick/api/moves/{moveId}/items
+   - 数据：{name, before_location, after_location}
+
+3. 物品相关（找、查询、记录位置）→ Momhand (/momhand/)
+   - 动作：添加/搜索物品
+   - API: POST /momhand/api/items 或 GET /momhand/api/search?q=xxx
+   - 数据：{name, type, location, usage}
+
+处理规则：
+1. 如果用户想记录出行、搬家、物品等信息：
+   - 选择合适的项目
+   - **执行具体的记录动作**（调用相应的 API 保存数据）
+   - 返回 success=true，包含 project、action、data、refresh
+
+2. 如果用户是问候、闲聊、提问（如"你好"、"你是谁"、"能做什么"）：
+   - 正常对话回复
+   - 返回 success=false，project=null，action=null
+   - message 字段回复用户的问题
+
+**重要要求：**
+- message 字段使用简洁的中文，**不要使用任何表情符号（emoji）**
+- 只返回必要的文字信息，保持专业简洁
+
+返回 JSON 格式：
+{
+  "success": true/false,
+  "project": "bydesign 或 cherry_pick 或 momhand 或 null",
+  "action": "操作类型或 null",
+  "message": "简洁的中文回复，不含表情符号",
+  "refresh": "/页面路径/ 或 null",
+  "data": {保存的数据} 或 null
+}`,
+    cherry_pick: null,
+    momhand: null,
+    siri_dream: null
+  };
+  // All modules share the same prompt
+  window.DEFAULT_SYSTEM_PROMPTS.cherry_pick = window.DEFAULT_SYSTEM_PROMPTS.bydesign;
+  window.DEFAULT_SYSTEM_PROMPTS.momhand = window.DEFAULT_SYSTEM_PROMPTS.bydesign;
+  window.DEFAULT_SYSTEM_PROMPTS.siri_dream = window.DEFAULT_SYSTEM_PROMPTS.bydesign;
+
+  /**
+   * 安全的 fetch 封装 — 检查 response.ok 并解析 JSON
+   */
+  window.safeFetch = async function(url, options) {
+    const response = await fetch(url, options);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    return response.json();
+  };
+
+  // ---- 默认配置 ----
   const DEFAULT_CONFIG = {
     project: 'bydesign',
     colors: {

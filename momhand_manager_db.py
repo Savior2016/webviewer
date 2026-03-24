@@ -3,10 +3,12 @@
 Momhand 物品管理器 - SQLite 数据库版本
 """
 
-import json
+import logging
 import sqlite3
 from datetime import datetime
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 DB_FILE = Path("/root/.openclaw/workspace/data/momhand.db")
 
@@ -47,7 +49,7 @@ def init_db():
     
     conn.commit()
     conn.close()
-    print("✅ Momhand 数据库初始化完成")
+    logger.info("Momhand 数据库初始化完成")
 
 class MomhandManager:
     def __init__(self):

@@ -584,6 +584,12 @@
   </div>
 
   <script>
+    async function safeFetch(url, options) {
+      const response = await fetch(url, options);
+      if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      return response.json();
+    }
+
     let currentMsgId = null;
     let pollTimer = null;
     
@@ -632,8 +638,7 @@
       
       // 从后端 API 加载当前提示词
       try {
-        const response = await fetch('/api/settings');
-        const data = await response.json();
+        const data = await safeFetch('/api/settings');
         if (data.success && data.system_prompt) {
           document.getElementById('systemPrompt').value = data.system_prompt;
         } else {
@@ -654,13 +659,11 @@
       const prompt = document.getElementById('systemPrompt').value;
       
       try {
-        const response = await fetch('/api/settings', {
+        const result = await safeFetch('/api/settings', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ system_prompt: prompt })
         });
-        
-        const result = await response.json();
         if (result.success) {
           alert('设置已保存！\n\n下次发送消息时会使用新的提示词。');
           hideSettings();
@@ -706,8 +709,7 @@
       const logsCount = document.getElementById('logsCount');
       
       try {
-        const response = await fetch(`/api/logs?lines=${lines}`);
-        const result = await response.json();
+        const result = await safeFetch(`/api/logs?lines=${lines}`);
         
         if (result.success) {
           const logs = result.logs || [];
@@ -747,8 +749,7 @@
     
     async function downloadLogs() {
       try {
-        const response = await fetch('/api/logs?lines=500');
-        const result = await response.json();
+        const result = await safeFetch('/api/logs?lines=500');
         
         if (result.success) {
           const logsText = (result.logs || []).join('\n');
@@ -809,7 +810,7 @@
             messageDiv.innerHTML = `
               <div class="w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-xl flex-shrink-0">🤖</div>
               <div class="bg-white rounded-2xl rounded-tl-none px-4 py-3 shadow-sm max-w-[85%]">
-                <div class="text-sm text-gray-700">${msg.content}</div>
+                <div class="text-sm text-gray-700">${escapeHtml(msg.content)}</div>
               </div>
             `;
           }
@@ -901,13 +902,11 @@
       showTyping();
       
       try {
-        const response = await fetch('/api/send-message', {
+        const result = await safeFetch('/api/send-message', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ message, module: 'siri_dream', timestamp: Date.now() })
         });
-        
-        const result = await response.json();
         removeTyping();
         
         // 检查 success 字段
@@ -946,8 +945,7 @@
       const pollTimer = setInterval(async () => {
         attempts++;
         try {
-          const response = await fetch(`/api/message-result?msg_id=${msgId}`);
-          const result = await response.json();
+          const result = await safeFetch(`/api/message-result?msg_id=${msgId}`);
           
           if (result.processed || !result.success) {
             clearInterval(pollTimer);
@@ -980,9 +978,9 @@
       // 移除常见表情符号（emoji），保持简洁
       const emojiRegex = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F900}-\u{1F9FF}\u{1F018}-\u{1F270}\u{238C}-\u{23FF}\u{1F004}]/gu;
       const cleanText = text.replace(emojiRegex, '');
-      
-      // 将换行转换为 HTML
-      return cleanText.replace(/\n/g, '<br>');
+
+      // 先转义 HTML，再将换行转换为 <br>
+      return escapeHtml(cleanText).replace(/\n/g, '<br>');
     }
 
     function escapeHtml(text) {

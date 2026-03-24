@@ -174,35 +174,10 @@
   <script>
     let allItems = [];
     let categories = new Set();
-    let panelOpen = false;
-
-    function togglePanel() {
-      panelOpen = !panelOpen;
-      const panel = document.getElementById('fabPanel');
-      const icon = document.getElementById('fabIcon');
-      if (panelOpen) {
-        panel.classList.remove('hidden');
-        icon.textContent = '✕';
-      } else {
-        panel.classList.add('hidden');
-        icon.textContent = '💬';
-      }
-    }
-
-    // 使用共享的 agent-chat 组件
-    // fillExample, sendMessage, showResult 等函数由 agent-chat.js 提供
-
-    function escapeHtml(text) {
-      if (!text) return '';
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    }
 
     async function loadStats() {
       try {
-        const res = await fetch('/momhand/api/stats');
-        const data = await res.json();
+        const data = await safeFetch('/momhand/api/stats');
         if (data.success) {
           const stats = data.data;
           document.getElementById('stats').innerHTML = `
@@ -232,9 +207,8 @@
         let url = '/momhand/api/items';
         if (keyword) url = `/momhand/api/search?q=${encodeURIComponent(keyword)}`;
         
-        const res = await fetch(url);
-        const data = await res.json();
-        
+        const data = await safeFetch(url);
+
         const grid = document.getElementById('itemsGrid');
         
         if (!data.success || !data.data || data.data.length === 0) {
@@ -267,19 +241,19 @@
               </div>
               <div class="flex items-start justify-between mb-4 pr-16">
                 <div class="flex-1">
-                  <h3 class="text-lg font-bold text-gray-800 mb-2">${item.name}</h3>
-                  <span class="inline-block px-3 py-1 bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 rounded-full text-xs font-semibold">${item.type || '未分类'}</span>
+                  <h3 class="text-lg font-bold text-gray-800 mb-2">${escapeHtml(item.name)}</h3>
+                  <span class="inline-block px-3 py-1 bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 rounded-full text-xs font-semibold">${escapeHtml(item.type || '未分类')}</span>
                 </div>
                 <div class="text-2xl">📦</div>
               </div>
               <div class="space-y-2 mb-4 text-sm">
-                ${item.usage ? `<div class="flex items-start gap-2"><span>💡</span><span class="text-gray-600">${item.usage}</span></div>` : ''}
-                ${item.purchase_date ? `<div class="flex items-center gap-2"><span>📅</span><span class="text-gray-600">${item.purchase_date}</span></div>` : ''}
-                ${item.expiry_date ? `<div class="flex items-center gap-2"><span>⏰</span><span class="text-gray-600">${item.expiry_date}</span></div>` : ''}
+                ${item.usage ? `<div class="flex items-start gap-2"><span>💡</span><span class="text-gray-600">${escapeHtml(item.usage)}</span></div>` : ''}
+                ${item.purchase_date ? `<div class="flex items-center gap-2"><span>📅</span><span class="text-gray-600">${escapeHtml(item.purchase_date)}</span></div>` : ''}
+                ${item.expiry_date ? `<div class="flex items-center gap-2"><span>⏰</span><span class="text-gray-600">${escapeHtml(item.expiry_date)}</span></div>` : ''}
               </div>
               <div class="bg-gradient-to-r from-blue-50 to-cyan-50 px-3 py-2 rounded-xl flex items-center gap-2">
                 <span class="text-lg">📍</span>
-                <span class="text-sm font-medium text-gray-700">${item.location}</span>
+                <span class="text-sm font-medium text-gray-700">${escapeHtml(item.location)}</span>
               </div>
               ${expiryHtml}
             </div>
@@ -295,7 +269,7 @@
       const select = document.getElementById('categoryFilter');
       const currentValue = select.value;
       select.innerHTML = '<option value="">全部分类</option>';
-      categories.forEach(cat => { select.innerHTML += `<option value="${cat}">${cat}</option>`; });
+      categories.forEach(cat => { select.innerHTML += `<option value="${escapeHtml(cat)}">${escapeHtml(cat)}</option>`; });
       select.value = currentValue;
     }
 
@@ -320,10 +294,9 @@
       if (!confirm('确定要删除这个物品吗？')) return;
       
       try {
-        const response = await fetch(`/momhand/api/items/${itemId}`, {
+        const result = await safeFetch(`/momhand/api/items/${itemId}`, {
           method: 'DELETE'
         });
-        const result = await response.json();
         
         if (result.success) {
           showResult('✅ 物品已删除', 'success');
@@ -340,8 +313,7 @@
     window.editItem = async function(itemId) {
       try {
         // 获取物品详情
-        const response = await fetch(`/momhand/api/items/${itemId}`);
-        const result = await response.json();
+        const result = await safeFetch(`/momhand/api/items/${itemId}`);
         
         if (!result.success || !result.data) {
           showResult('❌ 获取物品失败', 'error');
@@ -364,7 +336,7 @@
         if (newUsage === null) return;
         
         // 更新物品
-        const updateResponse = await fetch(`/momhand/api/items/${itemId}`, {
+        const updateResult = await safeFetch(`/momhand/api/items/${itemId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -374,8 +346,6 @@
             usage: newUsage || item.usage
           })
         });
-        
-        const updateResult = await updateResponse.json();
         
         if (updateResult.success) {
           showResult('✅ 物品已更新', 'success');
@@ -390,50 +360,7 @@
     };
 
     // ========== 提示词设置 ==========
-    const DEFAULT_SYSTEM_PROMPT = `你是 WebViewer 的助手 Dummy，负责处理用户的出行、搬家和物品记录请求。
-
-用户消息："{message}"
-
-可用项目：
-1. 出行相关（出差、旅行、出行）→ By Design (/bydesign/)
-   - 动作：创建出行记录
-   - API: POST /bydesign/api/trips
-   - 数据：{name, description}
-
-2. 搬家相关（搬家、打包、物品记录）→ Cherry Pick (/cherry-pick/)
-   - 动作：记录物品位置
-   - API: POST /cherry-pick/api/moves/{moveId}/items
-   - 数据：{name, before_location, after_location}
-
-3. 物品相关（找、查询、记录位置）→ Momhand (/momhand/)
-   - 动作：添加/搜索物品
-   - API: POST /momhand/api/items 或 GET /momhand/api/search?q=xxx
-   - 数据：{name, type, location, usage}
-
-处理规则：
-1. 如果用户想记录出行、搬家、物品等信息：
-   - 选择合适的项目
-   - **执行具体的记录动作**（调用相应的 API 保存数据）
-   - 返回 success=true，包含 project、action、data、refresh
-
-2. 如果用户是问候、闲聊、提问（如"你好"、"你是谁"、"能做什么"）：
-   - 正常对话回复
-   - 返回 success=false，project=null，action=null
-   - message 字段回复用户的问题
-
-**重要要求：**
-- message 字段使用简洁的中文，**不要使用任何表情符号（emoji）**
-- 只返回必要的文字信息，保持专业简洁
-
-返回 JSON 格式：
-{
-  "success": true/false,
-  "project": "bydesign 或 cherry_pick 或 momhand 或 null",
-  "action": "操作类型或 null",
-  "message": "简洁的中文回复，不含表情符号",
-  "refresh": "/页面路径/ 或 null",
-  "data": {保存的数据} 或 null
-}`;
+    const DEFAULT_SYSTEM_PROMPT = window.DEFAULT_SYSTEM_PROMPTS['momhand'];
 
     // 初始化聊天组件
     initAgentChat({

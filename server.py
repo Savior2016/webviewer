@@ -21,10 +21,14 @@ import requests
 import uuid
 from datetime import datetime
 import sys
-import importlib
 import threading
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 import logging
+
+# 将工作目录加入 sys.path (仅一次)
+WORKSPACE = "/root/.openclaw/workspace"
+if WORKSPACE not in sys.path:
+    sys.path.insert(0, WORKSPACE)
 
 PORT = 443
 WEB_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "www")
@@ -192,29 +196,24 @@ def validate_token(auth_header: str) -> bool:
     # 直接 Token 格式
     return auth_header in API_TOKENS
 
+# 单例 manager 实例 (启动时加载一次)
+from momhand_manager_db import manager as _momhand_manager
+from cherry_pick_manager import manager as _cherry_pick_manager
+from bydesign_manager import manager as _bydesign_manager
+import siri_dream_manager as _siri_dream_module
+_siri_dream_manager = _siri_dream_module.manager
+
 def get_momhand_manager():
-    """获取最新的物品管理器实例（SQLite 数据库版本）"""
-    if 'momhand_manager_db' in sys.modules:
-        importlib.reload(sys.modules['momhand_manager_db'])
-    sys.path.insert(0, "/root/.openclaw/workspace")
-    from momhand_manager_db import manager
-    return manager
+    """获取物品管理器实例"""
+    return _momhand_manager
 
 def get_cherry_pick_manager():
-    """获取最新的搬家管理器实例"""
-    if 'cherry_pick_manager' in sys.modules:
-        importlib.reload(sys.modules['cherry_pick_manager'])
-    sys.path.insert(0, "/root/.openclaw/workspace")
-    from cherry_pick_manager import manager
-    return manager
+    """获取搬家管理器实例"""
+    return _cherry_pick_manager
 
 def get_bydesign_manager():
-    """获取最新的出行管理器实例"""
-    if 'bydesign_manager' in sys.modules:
-        importlib.reload(sys.modules['bydesign_manager'])
-    sys.path.insert(0, "/root/.openclaw/workspace")
-    from bydesign_manager import manager
-    return manager
+    """获取出行管理器实例"""
+    return _bydesign_manager
 
 # 全局设置文件
 SETTINGS_FILE = Path("/root/.openclaw/workspace/data/settings.json")
@@ -463,8 +462,6 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
                 self.handle_get_prompt(path)
             elif path == "/api/settings":
                 self.handle_get_settings()
-            elif path.startswith("/api/module-settings/"):
-                self.handle_get_module_settings(path)
             elif path == "/api/message-result":
                 self.handle_message_result(query)
             elif path == "/api/logs":
@@ -511,7 +508,7 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
                             response["data"] = item
                             response["success"] = True
                             break
-                except:
+                except ValueError:
                     pass
                 response["success"] = bool(response["data"])
             
@@ -564,15 +561,18 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
         try:
             parsed = urlparse(self.path)
             path = parsed.path
+
+            if not self._check_request_security(path):
+                return
             
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length).decode('utf-8') if content_length > 0 else '{}'
             
             try:
                 data = json.loads(body) if body else {}
-            except:
+            except (json.JSONDecodeError, ValueError):
                 data = {}
-            
+
             if path == "/api/send-message":
                 self.handle_send_message(data)
             elif path == "/momhand/api/items":
@@ -599,15 +599,18 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
         try:
             parsed = urlparse(self.path)
             path = parsed.path
+
+            if not self._check_request_security(path):
+                return
             
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length).decode('utf-8') if content_length > 0 else '{}'
             
             try:
                 data = json.loads(body) if body else {}
-            except:
+            except (json.JSONDecodeError, ValueError):
                 data = {}
-            
+
             if path.startswith("/momhand/api/items/"):
                 self.handle_momhand_put(path, data)
             elif path.startswith("/cherry-pick/api/items/"):
@@ -630,7 +633,10 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
         try:
             parsed = urlparse(self.path)
             path = parsed.path
-            
+
+            if not self._check_request_security(path):
+                return
+
             if path.startswith("/momhand/api/items/"):
                 self.handle_momhand_delete(path)
             elif path.startswith("/cherry-pick/api/"):
@@ -649,7 +655,14 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
     def handle_get_prompt(self, path):
         """获取项目提示词"""
         try:
+            import re
             project = path.split("/")[-1]
+            if not re.match(r'^[a-zA-Z0-9_-]+$', project):
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": f"无效的项目名称：{project}"}, ensure_ascii=False).encode("utf-8"))
+                return
             prompt_file = f"/root/.openclaw/workspace/data/prompts/{project}.json"
             
             if os.path.exists(prompt_file):
@@ -770,6 +783,7 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
     def handle_message_result(self, query):
         """处理消息结果轮询"""
         try:
+            import re
             msg_id = query.get('msg_id', [None])[0]
             if not msg_id:
                 self.send_response(400)
@@ -777,7 +791,13 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({"error": "缺少 msg_id 参数"}, ensure_ascii=False).encode("utf-8"))
                 return
-            
+            if not re.match(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', msg_id):
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": "无效的 msg_id 格式"}, ensure_ascii=False).encode("utf-8"))
+                return
+
             result_file = f"/root/.openclaw/workspace/data/results/{msg_id}.json"
             if os.path.exists(result_file):
                 with open(result_file, 'r', encoding='utf-8') as f:
@@ -1111,26 +1131,12 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
             elif "/trips/" in path and "/checklist/" in path:
                 trip_id = parts[4]
                 item_id = parts[6]
-                trip = manager.get_trip(trip_id)
-                if trip and trip.get("checklist_snapshot"):
-                    for item in trip["checklist_snapshot"]:
-                        if item["id"] == item_id:
-                            item.update(data)
-                            manager._save_trips()
-                            response = item
-                            break
-            
+                response = manager.update_trip_checklist_item(trip_id, item_id, data)
+
             elif "/trips/" in path and "/items/" in path:
                 trip_id = parts[4]
                 item_id = parts[6]
-                trip = manager.get_trip(trip_id)
-                if trip and trip.get("custom_items"):
-                    for item in trip["custom_items"]:
-                        if item["id"] == item_id:
-                            item.update(data)
-                            manager._save_trips()
-                            response = item
-                            break
+                response = manager.update_trip_custom_item(trip_id, item_id, data)
             
             if not response:
                 raise Exception("项目不存在")
@@ -1165,10 +1171,7 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
                 parts = path.split("/")
                 trip_id = parts[4]
                 item_id = parts[6]
-                trip = manager.get_trip(trip_id)
-                if trip:
-                    trip["custom_items"] = [i for i in trip["custom_items"] if i["id"] != item_id]
-                    manager._save_trips()
+                manager.delete_trip_custom_item(trip_id, item_id)
             
             self.send_response(200)
             self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -1186,11 +1189,8 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
     def handle_siri_dream_api(self, path, query):
         """处理 Siri Dream API GET 请求"""
         try:
-            import sys
-            sys.path.insert(0, "/root/.openclaw/workspace")
-            import siri_dream_manager
-            manager = siri_dream_manager.manager
-            
+            manager = _siri_dream_manager
+
             response = {"success": False, "data": None}
             
             # 新增：通过 message_id 查询单个消息处理结果
@@ -1272,11 +1272,8 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
     def handle_siri_dream_message(self, data):
         """处理 Siri Dream 消息 - 异步处理，立即返回 message_id"""
         try:
-            import sys
-            sys.path.insert(0, "/root/.openclaw/workspace")
-            import siri_dream_manager
-            manager = siri_dream_manager.manager
-            
+            manager = _siri_dream_manager
+
             text = data.get('text', '')
             metadata = data.get('metadata', {})
             
@@ -1324,11 +1321,8 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
     def handle_siri_dream_query(self, data):
         """通过 POST + message_id 查询处理结果"""
         try:
-            import sys
-            sys.path.insert(0, "/root/.openclaw/workspace")
-            import siri_dream_manager
-            manager = siri_dream_manager.manager
-            
+            manager = _siri_dream_manager
+
             message_id = data.get('message_id', '')
             
             if not message_id:
@@ -1401,74 +1395,6 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode("utf-8"))
-            logger.info(f"❌ Siri Dream 消息处理失败：{e}")
-            import traceback
-            traceback.print_exc()
-            self.send_response(500)
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
-            self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode("utf-8"))
-    
-    def _process_siri_dream_message(self, message_id: str, text: str):
-        """后台处理 Siri Dream 消息"""
-        import subprocess
-        import re
-        import json
-        
-        try:
-            import sys
-            sys.path.insert(0, "/root/.openclaw/workspace")
-            import siri_dream_manager
-            manager = siri_dream_manager.manager
-            
-            # 更新状态为处理中
-            manager['update_message_status'](message_id, 'processing')
-            
-            # 获取提示词
-            system_prompt = manager['get_system_prompt']()
-            full_prompt = system_prompt.format(message=text)
-            
-            # 调用 OpenClaw Agent
-            cmd = [
-                '/root/.nvm/versions/node/v22.22.0/bin/openclaw',
-                'agent',
-                '--agent', 'dummy',
-                '-m', full_prompt
-            ]
-            
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
-            output = result.stdout + result.stderr
-            
-            # 清理输出，提取有效内容
-            output = output.strip()
-            
-            # 尝试提取 JSON（如果有）
-            json_match = re.search(r'\{[\s\S]*\}', output)
-            
-            if json_match:
-                try:
-                    result_data = json.loads(json_match.group(0))
-                    # 如果解析成功，检查是否有 message 字段
-                    if isinstance(result_data, dict) and 'message' in result_data:
-                        manager['update_message_status'](message_id, 'completed', result_data)
-                    else:
-                        manager['update_message_status'](message_id, 'completed', {'message': output})
-                    logger.info(f"✅ Siri Dream 处理完成：{message_id}")
-                except json.JSONDecodeError as e:
-                    # JSON 解析失败，使用纯文本
-                    manager['update_message_status'](message_id, 'completed', {'message': output})
-                    logger.info(f"⚠️ Siri Dream JSON 解析失败，使用纯文本：{message_id}")
-            else:
-                # 没有 JSON，使用纯文本
-                manager['update_message_status'](message_id, 'completed', {'message': output})
-                logger.info(f"✅ Siri Dream 处理完成（纯文本）：{message_id}")
-        
-        except subprocess.TimeoutExpired:
-            manager['update_message_status'](message_id, 'failed', {"error": "处理超时"})
-            logger.info(f"❌ Siri Dream 处理超时：{message_id}")
-        except Exception as e:
-            manager['update_message_status'](message_id, 'failed', {"error": str(e)})
-            logger.info(f"❌ Siri Dream 处理失败 {message_id}: {e}")
     
     def _process_siri_dream_message_sync(self, message_id: str, text: str):
         """同步处理 Siri Dream 消息，等待完成后返回结果"""
@@ -1477,10 +1403,7 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
         import json
         
         try:
-            import sys
-            sys.path.insert(0, "/root/.openclaw/workspace")
-            import siri_dream_manager
-            manager = siri_dream_manager.manager
+            manager = _siri_dream_manager
             
             # 更新状态为处理中
             manager['update_message_status'](message_id, 'processing')
@@ -1550,11 +1473,8 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
     def handle_siri_dream_delete(self, path):
         """处理 Siri Dream DELETE 请求"""
         try:
-            import sys
-            sys.path.insert(0, "/root/.openclaw/workspace")
-            import siri_dream_manager
-            manager = siri_dream_manager.manager
-            
+            manager = _siri_dream_manager
+
             message_id = path.split("/")[-1]
             result = manager['delete_message'](message_id)
             
@@ -1677,9 +1597,7 @@ class WebViewerHandler(http.server.BaseHTTPRequestHandler):
         """
         try:
             logger.info(f"🔄 开始后台处理消息：{msg_id}")
-            
-            import sys
-            sys.path.insert(0, "/root/.openclaw/workspace")
+
             from openclaw_agent_processor import process_via_openclaw_agent
             
             logger.info(f"📤 发送消息到 OpenClaw Agent: {message[:50]}...")

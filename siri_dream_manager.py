@@ -5,7 +5,7 @@ Siri 的梦 - 消息管理器
 """
 
 import json
-import os
+import threading
 import time
 from pathlib import Path
 from datetime import datetime
@@ -28,73 +28,155 @@ DEFAULT_SYSTEM_PROMPT = """你是 WebViewer 的专业助手 Dummy。你擅长：
 1. 选取 webviewer 中合适的模块处理消息。
 2. 进行实际的保存操作，不要只返回 JSON"""
 
-
-def load_messages():
-    """加载历史消息"""
-    if MESSAGES_FILE.exists():
-        with open(MESSAGES_FILE, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    return []
+# 线程安全锁
+_lock = threading.Lock()
 
 
-def save_messages(messages):
-    """保存历史消息"""
-    with open(MESSAGES_FILE, 'w', encoding='utf-8') as f:
-        json.dump(messages, f, ensure_ascii=False, indent=2)
+class SiriDreamManager:
+    """Siri Dream 消息管理器"""
+
+    def load_messages(self):
+        """加载历史消息"""
+        if MESSAGES_FILE.exists():
+            with open(MESSAGES_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        return []
+
+    def save_messages(self, messages):
+        """保存历史消息"""
+        with open(MESSAGES_FILE, 'w', encoding='utf-8') as f:
+            json.dump(messages, f, ensure_ascii=False, indent=2)
+
+    def add_message(self, message_text, source='api', metadata=None):
+        """添加新消息"""
+        with _lock:
+            messages = self.load_messages()
+
+            new_message = {
+                'id': str(uuid.uuid4()),
+                'text': message_text,
+                'source': source,
+                'timestamp': int(time.time()),
+                'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'status': 'pending',
+                'result': None,
+                'metadata': metadata or {}
+            }
+
+            messages.insert(0, new_message)
+
+            # 只保留最近 100 条
+            if len(messages) > 100:
+                messages = messages[:100]
+
+            self.save_messages(messages)
+            return new_message
+
+    def update_message_status(self, message_id, status, result=None):
+        """更新消息处理状态"""
+        with _lock:
+            messages = self.load_messages()
+
+            for msg in messages:
+                if msg['id'] == message_id:
+                    msg['status'] = status
+                    if result:
+                        msg['result'] = result
+                    break
+
+            self.save_messages(messages)
+
+    def get_messages(self, limit=50, offset=0):
+        """获取消息列表"""
+        messages = self.load_messages()
+        return messages[offset:offset+limit]
+
+    def get_message(self, message_id):
+        """获取单条消息"""
+        messages = self.load_messages()
+        for msg in messages:
+            if msg['id'] == message_id:
+                return msg
+        return None
+
+    def delete_message(self, message_id):
+        """删除消息"""
+        with _lock:
+            messages = self.load_messages()
+            messages = [m for m in messages if m['id'] != message_id]
+            self.save_messages(messages)
+            return True
+
+    def clear_messages(self):
+        """清空所有消息"""
+        with _lock:
+            self.save_messages([])
+            return True
+
+    def get_statistics(self):
+        """获取统计信息"""
+        messages = self.load_messages()
+        total = len(messages)
+        pending = len([m for m in messages if m['status'] == 'pending'])
+        completed = len([m for m in messages if m['status'] == 'completed'])
+        failed = len([m for m in messages if m['status'] == 'failed'])
+
+        return {
+            'total': total,
+            'pending': pending,
+            'completed': completed,
+            'failed': failed,
+            'today': len([m for m in messages if datetime.fromtimestamp(m['timestamp']).date() == datetime.now().date()])
+        }
+
+    def load_settings(self):
+        """加载设置"""
+        if SETTINGS_FILE.exists():
+            with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        return {'system_prompt': DEFAULT_SYSTEM_PROMPT}
+
+    def save_settings(self, settings):
+        """保存设置"""
+        with _lock:
+            SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
+            with open(SETTINGS_FILE, 'w', encoding='utf-8') as f:
+                json.dump(settings, f, ensure_ascii=False, indent=2)
+            return True
+
+    def get_system_prompt(self):
+        """获取系统提示词"""
+        settings = self.load_settings()
+        return settings.get('system_prompt', DEFAULT_SYSTEM_PROMPT)
+
+    def save_system_prompt(self, prompt):
+        """保存系统提示词"""
+        with _lock:
+            settings = self.load_settings()
+            settings['system_prompt'] = prompt
+            SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
+            with open(SETTINGS_FILE, 'w', encoding='utf-8') as f:
+                json.dump(settings, f, ensure_ascii=False, indent=2)
+            return True
 
 
-def add_message(message_text, source='api', metadata=None):
-    """添加新消息"""
-    messages = load_messages()
-    
-    new_message = {
-        'id': str(uuid.uuid4()),
-        'text': message_text,
-        'source': source,  # 'api' 或 'web'
-        'timestamp': int(time.time()),
-        'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        'status': 'pending',  # pending, processing, completed, failed
-        'result': None,
-        'metadata': metadata or {}
-    }
-    
-    messages.insert(0, new_message)  # 新消息在最前面
-    
-    # 只保留最近 100 条
-    if len(messages) > 100:
-        messages = messages[:100]
-    
-    save_messages(messages)
-    return new_message
+# 全局实例
+_manager_instance = SiriDreamManager()
 
-
-def update_message_status(message_id, status, result=None):
-    """更新消息处理状态"""
-    messages = load_messages()
-    
-    for msg in messages:
-        if msg['id'] == message_id:
-            msg['status'] = status
-            if result:
-                msg['result'] = result
-            break
-    
-    save_messages(messages)
-
-
-def get_messages(limit=50, offset=0):
-    """获取消息列表"""
-    messages = load_messages()
-    return messages[offset:offset+limit]
-
-
-def get_message(message_id):
-    """获取单条消息"""
-    messages = load_messages()
-    for msg in messages:
-        if msg['id'] == message_id:
-            return msg
-    return None
+# 模块级函数 (向后兼容，测试直接调用 sdm.add_message() 等)
+load_messages = _manager_instance.load_messages
+save_messages = _manager_instance.save_messages
+add_message = _manager_instance.add_message
+update_message_status = _manager_instance.update_message_status
+get_messages = _manager_instance.get_messages
+get_message = _manager_instance.get_message
+delete_message = _manager_instance.delete_message
+clear_messages = _manager_instance.clear_messages
+get_statistics = _manager_instance.get_statistics
+load_settings = _manager_instance.load_settings
+save_settings = _manager_instance.save_settings
+get_system_prompt = _manager_instance.get_system_prompt
+save_system_prompt = _manager_instance.save_system_prompt
 
 
 def process_via_openclaw_agent(message: str, module: str = 'siri_dream') -> dict:
@@ -103,68 +185,7 @@ def process_via_openclaw_agent(message: str, module: str = 'siri_dream') -> dict
     return agent_process(message, module)
 
 
-def delete_message(message_id):
-    """删除消息"""
-    messages = load_messages()
-    messages = [m for m in messages if m['id'] != message_id]
-    save_messages(messages)
-    return True
-
-
-def clear_messages():
-    """清空所有消息"""
-    save_messages([])
-    return True
-
-
-def get_statistics():
-    """获取统计信息"""
-    messages = load_messages()
-    total = len(messages)
-    pending = len([m for m in messages if m['status'] == 'pending'])
-    completed = len([m for m in messages if m['status'] == 'completed'])
-    failed = len([m for m in messages if m['status'] == 'failed'])
-    
-    return {
-        'total': total,
-        'pending': pending,
-        'completed': completed,
-        'failed': failed,
-        'today': len([m for m in messages if datetime.fromtimestamp(m['timestamp']).date() == datetime.now().date()])
-    }
-
-
-# 设置管理
-def load_settings():
-    """加载设置"""
-    if SETTINGS_FILE.exists():
-        with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    return {'system_prompt': DEFAULT_SYSTEM_PROMPT}
-
-
-def save_settings(settings):
-    """保存设置"""
-    SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with open(SETTINGS_FILE, 'w', encoding='utf-8') as f:
-        json.dump(settings, f, ensure_ascii=False, indent=2)
-    return True
-
-
-def get_system_prompt():
-    """获取系统提示词"""
-    settings = load_settings()
-    return settings.get('system_prompt', DEFAULT_SYSTEM_PROMPT)
-
-
-def save_system_prompt(prompt):
-    """保存系统提示词"""
-    settings = load_settings()
-    settings['system_prompt'] = prompt
-    return save_settings(settings)
-
-
-# 全局实例
+# 全局 manager (向后兼容 server.py 的 manager['method']() 调用)
 manager = {
     'load_messages': load_messages,
     'save_messages': save_messages,

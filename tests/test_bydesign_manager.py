@@ -134,6 +134,46 @@ class TestTrips:
         result = bydesign_manager.get_trip_progress('nonexistent')
         assert result is None
 
+    def test_update_trip_checklist_item(self, bydesign_manager):
+        trip = bydesign_manager.create_trip('测试')
+        item_id = trip['checklist_snapshot'][0]['id']
+        updated = bydesign_manager.update_trip_checklist_item(trip['id'], item_id, {'completed': True})
+        assert updated is not None
+        assert updated['completed'] is True
+
+    def test_update_trip_checklist_item_nonexistent_trip(self, bydesign_manager):
+        result = bydesign_manager.update_trip_checklist_item('bad-id', 'item-id', {'completed': True})
+        assert result is None
+
+    def test_update_trip_checklist_item_nonexistent_item(self, bydesign_manager):
+        trip = bydesign_manager.create_trip('测试')
+        result = bydesign_manager.update_trip_checklist_item(trip['id'], 'bad-item', {'completed': True})
+        assert result is None
+
+    def test_update_trip_custom_item(self, bydesign_manager):
+        trip = bydesign_manager.create_trip('测试')
+        custom = bydesign_manager.add_custom_item(trip['id'], '带护照')
+        updated = bydesign_manager.update_trip_custom_item(trip['id'], custom['id'], {'completed': True})
+        assert updated is not None
+        assert updated['completed'] is True
+
+    def test_update_trip_custom_item_nonexistent(self, bydesign_manager):
+        trip = bydesign_manager.create_trip('测试')
+        result = bydesign_manager.update_trip_custom_item(trip['id'], 'bad-id', {'completed': True})
+        assert result is None
+
+    def test_delete_trip_custom_item(self, bydesign_manager):
+        trip = bydesign_manager.create_trip('测试')
+        custom = bydesign_manager.add_custom_item(trip['id'], '待删除项')
+        result = bydesign_manager.delete_trip_custom_item(trip['id'], custom['id'])
+        assert result is True
+        refreshed = bydesign_manager.get_trip(trip['id'])
+        assert len(refreshed['custom_items']) == 0
+
+    def test_delete_trip_custom_item_nonexistent_trip(self, bydesign_manager):
+        result = bydesign_manager.delete_trip_custom_item('bad-id', 'item-id')
+        assert result is False
+
 
 class TestTemplates:
     """模板管理测试"""

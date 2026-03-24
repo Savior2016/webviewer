@@ -325,29 +325,14 @@
   </div>
 
   <script>
-    let panelOpen = false;
     let currentTripId = null;
-
-    function togglePanel() {
-      panelOpen = !panelOpen;
-      const panel = document.getElementById('fabPanel');
-      const icon = document.getElementById('fabIcon');
-      if (panelOpen) {
-        panel.classList.remove('hidden');
-        icon.textContent = '✕';
-      } else {
-        panel.classList.add('hidden');
-        icon.textContent = '💬';
-      }
-    }
 
     // 使用共享的 agent-chat 组件
     // fillExample, sendMessage, showResult 等函数由 agent-chat.js 提供
 
     async function loadChecklist() {
       try {
-        const res = await fetch('/bydesign/api/checklist');
-        const result = await res.json();
+        const result = await safeFetch('/bydesign/api/checklist');
         const items = result.data || result || [];
         document.getElementById('checklistCount').textContent = `${items.length} 项 · 每次出行都会同步`;
         
@@ -373,7 +358,7 @@
 
     async function toggleChecklistItem(itemId, completed) {
       try {
-        await fetch(`/bydesign/api/checklist/${itemId}`, {
+        await safeFetch(`/bydesign/api/checklist/${itemId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ completed })
@@ -387,7 +372,7 @@
     async function deleteChecklistItem(itemId) {
       if (!confirm('确定删除此项？')) return;
       try {
-        await fetch(`/bydesign/api/checklist/${itemId}`, { method: 'DELETE' });
+        await safeFetch(`/bydesign/api/checklist/${itemId}`, { method: 'DELETE' });
         loadChecklist();
       } catch (error) {
         console.error('删除失败:', error);
@@ -400,12 +385,11 @@
       if (!text) return;
       
       try {
-        const response = await fetch('/bydesign/api/checklist', {
+        const result = await safeFetch('/bydesign/api/checklist', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text })
         });
-        const result = await response.json();
         
         if (result.success && result.data) {
           input.value = '';
@@ -424,8 +408,7 @@
 
     async function loadTemplatesPreview() {
       try {
-        const res = await fetch('/bydesign/api/templates');
-        const result = await res.json();
+        const result = await safeFetch('/bydesign/api/templates');
         const templates = result.data || result || [];
         document.getElementById('templateCount').textContent = `${templates.length} 个 · 可批量导入到出行`;
         
@@ -457,8 +440,7 @@
 
     async function loadTrips() {
       try {
-        const res = await fetch('/bydesign/api/trips');
-        const result = await res.json();
+        const result = await safeFetch('/bydesign/api/trips');
         const trips = result.data || result || [];
         const container = document.getElementById('tripsList');
         
@@ -504,7 +486,7 @@
       if (!name) return alert('请输入出行名称');
       
       try {
-        await fetch('/bydesign/api/trips', {
+        await safeFetch('/bydesign/api/trips', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name, description: '' })
@@ -521,8 +503,7 @@
     async function viewTrip(tripId) {
       currentTripId = tripId;
       try {
-        const res = await fetch(`/bydesign/api/trips/${tripId}`);
-        const result = await res.json();
+        const result = await safeFetch(`/bydesign/api/trips/${tripId}`);
         const trip = result.data || result;
         
         const tripName = typeof trip.name === 'object' ? (trip.name.name || '未命名') : trip.name;
@@ -577,7 +558,7 @@
     async function toggleTripItem(tripId, itemId, completed, isCustom) {
       try {
         const path = isCustom ? 'items' : 'checklist';
-        await fetch(`/bydesign/api/trips/${tripId}/${path}/${itemId}`, {
+        await safeFetch(`/bydesign/api/trips/${tripId}/${path}/${itemId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ completed, is_custom: isCustom })
@@ -594,7 +575,7 @@
       if (!text || !currentTripId) return;
       
       try {
-        await fetch(`/bydesign/api/trips/${currentTripId}/items`, {
+        await safeFetch(`/bydesign/api/trips/${currentTripId}/items`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text })
@@ -609,7 +590,7 @@
     async function deleteCustomItem(tripId, itemId) {
       if (!confirm('确定删除此项？')) return;
       try {
-        await fetch(`/bydesign/api/trips/${tripId}/items/${itemId}`, { method: 'DELETE' });
+        await safeFetch(`/bydesign/api/trips/${tripId}/items/${itemId}`, { method: 'DELETE' });
         viewTrip(tripId);
       } catch (error) {
         console.error('删除失败:', error);
@@ -619,7 +600,7 @@
     async function completeTrip(tripId) {
       if (!confirm('确认完成此出行？')) return;
       try {
-        await fetch(`/bydesign/api/trips/${tripId}/complete`, {
+        await safeFetch(`/bydesign/api/trips/${tripId}/complete`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' }
         });
@@ -634,7 +615,7 @@
     async function deleteTrip(tripId) {
       if (!confirm('确定删除此出行记录？')) return;
       try {
-        await fetch(`/bydesign/api/trips/${tripId}`, { method: 'DELETE' });
+        await safeFetch(`/bydesign/api/trips/${tripId}`, { method: 'DELETE' });
         loadTrips();
         showResult('出行已删除', 'success');
       } catch (error) {
@@ -660,8 +641,7 @@
 
     async function loadTemplates() {
       try {
-        const res = await fetch('/bydesign/api/templates');
-        const templates = await res.json();
+        const templates = await safeFetch('/bydesign/api/templates');
         document.getElementById('templatesTotal').textContent = `${templates.length} 个`;
         
         const container = document.getElementById('templatesList');
@@ -705,7 +685,7 @@
       const items = itemsText.split('\n').filter(line => line.trim()).map(line => ({ text: line.trim() }));
       
       try {
-        await fetch('/bydesign/api/templates', {
+        await safeFetch('/bydesign/api/templates', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name, items })
@@ -725,7 +705,7 @@
     async function deleteTemplate(templateId) {
       if (!confirm('确定删除此模板？')) return;
       try {
-        await fetch(`/bydesign/api/templates/${templateId}`, { method: 'DELETE' });
+        await safeFetch(`/bydesign/api/templates/${templateId}`, { method: 'DELETE' });
         loadTemplates();
         loadTemplatesPreview();
         showResult('模板已删除', 'success');
@@ -747,8 +727,7 @@
 
     async function loadImportTemplates() {
       try {
-        const res = await fetch('/bydesign/api/templates');
-        const templates = await res.json();
+        const templates = await safeFetch('/bydesign/api/templates');
         const container = document.getElementById('importTemplatesList');
         
         if (templates.length === 0) {
@@ -776,12 +755,11 @@
       if (!currentTripId) return;
       
       try {
-        const response = await fetch(`/bydesign/api/trips/${currentTripId}/templates`, {
+        const result = await safeFetch(`/bydesign/api/trips/${currentTripId}/templates`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ template_id: templateId })
         });
-        const result = await response.json();
         
         closeImportTemplate();
         viewTrip(currentTripId);
@@ -797,57 +775,8 @@
       }
     }
 
-    function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    }
-
     // ========== 提示词设置 ==========
-    const DEFAULT_SYSTEM_PROMPT = `你是 WebViewer 的助手 Dummy，负责处理用户的出行、搬家和物品记录请求。
-
-用户消息："{message}"
-
-可用项目：
-1. 出行相关（出差、旅行、出行）→ By Design (/bydesign/)
-   - 动作：创建出行记录
-   - API: POST /bydesign/api/trips
-   - 数据：{name, description}
-
-2. 搬家相关（搬家、打包、物品记录）→ Cherry Pick (/cherry-pick/)
-   - 动作：记录物品位置
-   - API: POST /cherry-pick/api/moves/{moveId}/items
-   - 数据：{name, before_location, after_location}
-
-3. 物品相关（找、查询、记录位置）→ Momhand (/momhand/)
-   - 动作：添加/搜索物品
-   - API: POST /momhand/api/items 或 GET /momhand/api/search?q=xxx
-   - 数据：{name, type, location, usage}
-
-处理规则：
-1. 如果用户想记录出行、搬家、物品等信息：
-   - 选择合适的项目
-   - **执行具体的记录动作**（调用相应的 API 保存数据）
-   - 返回 success=true，包含 project、action、data、refresh
-
-2. 如果用户是问候、闲聊、提问（如"你好"、"你是谁"、"能做什么"）：
-   - 正常对话回复
-   - 返回 success=false，project=null，action=null
-   - message 字段回复用户的问题
-
-**重要要求：**
-- message 字段使用简洁的中文，**不要使用任何表情符号（emoji）**
-- 只返回必要的文字信息，保持专业简洁
-
-返回 JSON 格式：
-{
-  "success": true/false,
-  "project": "bydesign 或 cherry_pick 或 momhand 或 null",
-  "action": "操作类型或 null",
-  "message": "简洁的中文回复，不含表情符号",
-  "refresh": "/页面路径/ 或 null",
-  "data": {保存的数据} 或 null
-}`;
+    const DEFAULT_SYSTEM_PROMPT = window.DEFAULT_SYSTEM_PROMPTS['bydesign'];
 
     // 初始化聊天组件
     initAgentChat({

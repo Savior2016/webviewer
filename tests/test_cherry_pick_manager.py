@@ -99,3 +99,38 @@ class TestItems:
         item = cherry_pick_manager.add_item(move['id'], '测试')
         updated = cherry_pick_manager.update_item(item['id'], {'invalid_key': 'value', 'name': '新名'})
         assert updated['name'] == '新名'
+
+
+class TestMomhandSync:
+    """cherry_pick → momhand 同步测试"""
+
+    def test_add_item_with_after_location_syncs_to_momhand(self, cherry_pick_manager, momhand_manager):
+        move = cherry_pick_manager.create_move('搬家')
+        item = cherry_pick_manager.add_item(
+            move['id'], '电脑', after_location='新书房'
+        )
+        assert item is not None
+        assert item['synced_to_momhand'] is True
+        assert 'momhand_item_id' in item
+
+        momhand_item = momhand_manager.get_item_by_id(item['momhand_item_id'])
+        assert momhand_item is not None
+        assert momhand_item['name'] == '电脑'
+        assert momhand_item['location'] == '新书房'
+
+    def test_add_item_without_after_location_no_sync(self, cherry_pick_manager, momhand_manager):
+        move = cherry_pick_manager.create_move('搬家')
+        item = cherry_pick_manager.add_item(move['id'], '书籍')
+        assert item.get('synced_to_momhand') is False
+        all_items = momhand_manager.get_all_items()
+        assert len(all_items) == 0
+
+    def test_update_item_triggers_sync(self, cherry_pick_manager, momhand_manager):
+        move = cherry_pick_manager.create_move('搬家')
+        item = cherry_pick_manager.add_item(move['id'], '台灯')
+        updated = cherry_pick_manager.update_item(item['id'], {'after_location': '卧室'})
+        assert updated['synced_to_momhand'] is True
+
+        all_items = momhand_manager.get_all_items()
+        assert len(all_items) == 1
+        assert all_items[0]['location'] == '卧室'

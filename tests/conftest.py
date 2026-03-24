@@ -91,7 +91,6 @@ def cherry_pick_manager(tmp_data_dir, monkeypatch):
     """提供一个使用临时目录的 CherryPickManager 实例"""
     monkeypatch.setattr(_cp_mod, 'DATA_DIR', tmp_data_dir)
     monkeypatch.setattr(_cp_mod, 'DB_FILE', tmp_data_dir / 'moves.json')
-    monkeypatch.setattr(_cp_mod, 'MOMHAND_FILE', tmp_data_dir / 'momhand.db')
     return _cp_mod.CherryPickManager()
 
 
