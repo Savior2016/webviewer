@@ -267,7 +267,7 @@
         <!-- 版权信息 -->
         <div class="pt-4">
           <p class="text-gray-500 text-xs">🎯 让生活更有序 · Powered by OpenClaw</p>
-          <p class="text-gray-600 text-xs mt-1">v1.5.4 · 底部功能优化</p>
+          <p class="text-gray-600 text-xs mt-1">v1.5.5 · 单元测试与一致性修复</p>
         </div>
       </div>
     </footer>
@@ -387,7 +387,7 @@
           <h3 class="text-2xl font-bold text-gray-800">Dummy 的小弟们</h3>
           <p class="text-sm text-gray-500 mt-1">Dummy's Minions · 你的生活管理工具集</p>
           <div class="inline-block mt-4 px-4 py-2 bg-purple-100 text-purple-700 rounded-full text-sm font-semibold">
-            v1.5.3
+            v1.5.5
           </div>
         </div>
         
@@ -399,10 +399,27 @@
             <div class="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-4 border border-purple-100">
               <div class="flex items-center gap-2 mb-2">
                 <span class="text-lg">🎉</span>
-                <span class="font-semibold text-purple-800">v1.5.3</span>
-                <span class="text-xs text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full">2026-03-02</span>
+                <span class="font-semibold text-purple-800">v1.5.5</span>
+                <span class="text-xs text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full">2026-03-24</span>
               </div>
-              <p class="text-sm text-purple-700 mb-3">提示词更新 + 设置 API 修复</p>
+              <p class="text-sm text-purple-700 mb-3">单元测试 + 跨页面一致性修复</p>
+              <ul class="text-xs text-purple-600 space-y-1">
+                <li>✅ 123 项单元测试覆盖后端与前端</li>
+                <li>✅ 修复 Momhand XSS 漏洞 (escapeHtml)</li>
+                <li>✅ 统一所有页面设置弹窗使用 glass-card</li>
+                <li>✅ 统一保存按钮文本为 💾 保存设置</li>
+                <li>✅ Siri Dream FAB 改用 CSS 类</li>
+                <li>✅ 移除重复 transitions.css 引用</li>
+              </ul>
+            </div>
+
+            <div class="bg-gray-50 rounded-xl p-4 border border-gray-200">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="text-lg">🎉</span>
+                <span class="font-semibold text-gray-700">v1.5.3</span>
+                <span class="text-xs text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full">2026-03-02</span>
+              </div>
+              <p class="text-sm text-gray-600 mb-3">提示词更新 + 设置 API 修复</p>
               <ul class="text-xs text-purple-600 space-y-1">
                 <li>✅ 更新系统提示词为专业助手版本</li>
                 <li>✅ 强调实际保存操作，不只返回 JSON</li>

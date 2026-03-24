@@ -1,9 +1,29 @@
 # WebViewer 版本信息
 
 ## 当前版本
-**v1.5.4** - 2026-03-13
+**v1.5.5** - 2026-03-24
 
 ## 更新日志
+
+### v1.5.5 (2026-03-24) - 单元测试与一致性修复
+🧪 全面单元测试 + 跨页面一致性修复
+
+#### 测试体系
+- ✅ 123 项单元测试 (后端 74 + 前端审计 32 + 一致性 17)
+- ✅ pytest 测试基础架构 (conftest.py + fixtures)
+- ✅ 4 个后端 Manager 模块完整覆盖
+- ✅ 前端 onclick 处理函数审计
+
+#### Bug 修复
+- ✅ 修复 Momhand escapeHtml 缺失 (XSS 漏洞)
+- ✅ 修复 Momhand 设置弹窗样式 (bg-white → glass-card)
+- ✅ 修复 Siri Dream 缺少 DEFAULT_SYSTEM_PROMPT
+
+#### 一致性改进
+- ✅ 统一保存按钮文本为「💾 保存设置」
+- ✅ 统一所有设置弹窗使用 glass-card 样式
+- ✅ Siri Dream FAB 从 inline style 改用 CSS 类
+- ✅ 移除 Cherry Pick/Momhand 重复的 transitions.css 引用
 
 ### v1.5.4 (2026-03-13) - 底部功能优化
 🎨 优化首页底部功能布局

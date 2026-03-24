@@ -35,6 +35,14 @@
     .code-block { background: #0f172a; color: #e2e8f0; padding: 1rem; border-radius: 0.5rem; font-family: 'Monaco', 'Consolas', monospace; font-size: 0.875rem; overflow-x: auto; }
     .new-message { animation: highlight 2s ease-out; }
     @keyframes highlight { 0% { background-color: rgba(59, 130, 246, 0.3); } 100% { background-color: transparent; } }
+    .fab-button { position: fixed; bottom: 24px; right: 24px; z-index: 100; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .fab-button:hover { transform: scale(1.1); }
+    .fab-panel { position: fixed; bottom: 100px; right: 24px; z-index: 1000; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    @media (max-width: 640px) {
+      .fab-button { bottom: 16px; right: 16px; }
+      .fab-panel { bottom: 90px; right: 16px; left: 16px; }
+      h1 { font-size: 28px !important; }
+    }
   </style>
 </head>
 <body class="gradient-bg min-h-screen pb-40 sm:pb-32">
@@ -158,12 +166,12 @@
   </div>
 
   <!-- 悬浮按钮 -->
-  <button onclick="togglePanel()" class="fab-button fixed bottom-24 right-24 z-[100] transition-all bg-gradient-to-r from-blue-500 to-purple-500 text-white w-14 h-14 rounded-full shadow-2xl flex items-center justify-center text-2xl hover:shadow-blue-500/50">
+  <button onclick="togglePanel()" class="fab-button bg-gradient-to-r from-blue-500 to-purple-500 text-white w-14 h-14 rounded-full shadow-2xl flex items-center justify-center text-2xl hover:shadow-blue-500/50">
     <span id="fabIcon">💬</span>
   </button>
 
   <!-- 展开面板 -->
-  <div id="fabPanel" class="fab-panel fixed bottom-[110px] right-24 z-[1000] hidden transition-all">
+  <div id="fabPanel" class="fab-panel hidden">
     <div class="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl max-w-md w-full">
       <div class="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
         <div class="flex items-center gap-3">
@@ -214,7 +222,7 @@
           <button onclick="resetPrompt()" class="text-gray-600 hover:text-gray-800 text-sm font-medium">🔄 恢复默认</button>
           <div class="flex gap-3">
             <button onclick="hideSettings()" class="px-5 py-2.5 rounded-xl border-2 border-gray-200 text-gray-700 font-medium hover:bg-gray-100 transition-all">取消</button>
-            <button onclick="saveSettings()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 text-white font-medium hover:shadow-lg transition-all">保存</button>
+            <button onclick="saveSettings()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 text-white font-medium hover:shadow-lg transition-all">💾 保存设置</button>
           </div>
         </div>
       </div>
@@ -404,6 +412,52 @@
       return div.innerHTML;
     }
 
+    // ========== 提示词设置 ==========
+    const DEFAULT_SYSTEM_PROMPT = `你是 WebViewer 的助手 Dummy，负责处理用户的出行、搬家和物品记录请求。
+
+用户消息："{message}"
+
+可用项目：
+1. 出行相关（出差、旅行、出行）→ By Design (/bydesign/)
+   - 动作：创建出行记录
+   - API: POST /bydesign/api/trips
+   - 数据：{name, description}
+
+2. 搬家相关（搬家、打包、物品记录）→ Cherry Pick (/cherry-pick/)
+   - 动作：记录物品位置
+   - API: POST /cherry-pick/api/moves/{moveId}/items
+   - 数据：{name, before_location, after_location}
+
+3. 物品相关（找、查询、记录位置）→ Momhand (/momhand/)
+   - 动作：添加/搜索物品
+   - API: POST /momhand/api/items 或 GET /momhand/api/search?q=xxx
+   - 数据：{name, type, location, usage}
+
+处理规则：
+1. 如果用户想记录出行、搬家、物品等信息：
+   - 选择合适的项目
+   - **执行具体的记录动作**（调用相应的 API 保存数据）
+   - 返回 success=true，包含 project、action、data、refresh
+
+2. 如果用户是问候、闲聊、提问（如"你好"、"你是谁"、"能做什么"）：
+   - 正常对话回复
+   - 返回 success=false，project=null，action=null
+   - message 字段回复用户的问题
+
+**重要要求：**
+- message 字段使用简洁的中文，**不要使用任何表情符号（emoji）**
+- 只返回必要的文字信息，保持专业简洁
+
+返回 JSON 格式：
+{
+  "success": true/false,
+  "project": "bydesign 或 cherry_pick 或 momhand 或 null",
+  "action": "操作类型或 null",
+  "message": "简洁的中文回复，不含表情符号",
+  "refresh": "/页面路径/ 或 null",
+  "data": {保存的数据} 或 null
+}`;
+
     // 初始化聊天组件
     initAgentChat({
       project: 'siri_dream',
@@ -411,7 +465,8 @@
         primary: 'from-blue-500 to-purple-500',
         primaryBg: 'bg-blue-50',
         primaryText: 'text-blue-600'
-      }
+      },
+      defaultPrompt: DEFAULT_SYSTEM_PROMPT
     });
 
     // 加载消息
